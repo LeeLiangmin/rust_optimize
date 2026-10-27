@@ -1,0 +1,8 @@
+# 构建产物与 profile 默认在 $WORK_DIR（~/rust_optimize_work），不在仓库内。
+# 以下规则防止在仓库内误生成后被提交。
+target/
+*.profraw
+*.profdata
+*.fdata
+perf.data*
+*.inst
