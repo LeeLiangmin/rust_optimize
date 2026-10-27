@@ -2,7 +2,7 @@
 
 ## 1. 概述
 
-本示例按 [BOLT.md](../BOLT.md) 第 3 节的步骤，对 ripgrep 14.1.1（源码位于 `examples/ripgrep/`，未修改）应用 BOLT：分别以插桩和采样方式采集 profile，生成 BOLT 版；再在 PGO 版的基础上执行 BOLT，生成 PGO + BOLT 版；最后用 7 条评测搜索对比各版本与普通版。语料、训练负载和评测负载与 [PGO 示例](pgo.md) 相同。ripgrep 是示例程序，同一流程适用于其他 Rust 程序。
+本示例按 [BOLT.md](../BOLT.md) 第 3、4 节的步骤，对 ripgrep 14.1.1（源码位于 `examples/ripgrep/`，未修改）应用 BOLT：分别以插桩和采样方式采集 profile，生成 BOLT 版；再在 PGO 版的基础上执行 BOLT，生成 PGO + BOLT 版；最后用 7 条评测搜索对比各版本与普通版。语料、训练负载和评测负载与 [PGO 示例](pgo.md) 相同。ripgrep 是示例程序，同一流程适用于其他 Rust 程序。
 
 | 步骤 | 操作 | 产出 |
 |:---|:---|:---|
@@ -11,17 +11,17 @@
 | 2a | 插桩：`llvm-bolt -instrument` 生成插桩版，执行 9 条训练搜索，`merge-fdata` 合并 | `work/bolt-data/instr/merged.fdata` |
 | 2b | 采样：以 `rg-reloc` 执行训练搜索，`perf record` 采样，`perf2bolt` 转换；CPU 不支持 LBR 时跳过 | `work/bolt-data/perf/rg.fdata` |
 | 3 | 以两份 profile 分别优化 `rg-reloc` | `rg-bolt`；`rg-bolt-perf` |
-| 3.8 | 用 PGO profile 构建带重定位的版本，重复插桩采集和优化 | `rg-pgo-bolt` |
+| 叠加 | 用 PGO profile 构建带重定位的版本，重复插桩采集和优化 | `rg-pgo-bolt` |
 | 4 | 以 7 条评测搜索对比各版本与 `rg-base` | `results/bolt.md` |
 
-全部步骤由 [`bolt.sh`](bolt.sh) 完成，每一步开始时打印 `==> 步骤 N：…`。步骤 3.8 使用 `pgo.sh` 生成的 PGO profile，且步骤 4 的对比包含 `pgo.sh` 生成的 `rg-pgo`，因此先运行 `pgo.sh`：
+全部步骤由 [`bolt.sh`](bolt.sh) 完成，每一步开始时打印 `==> 步骤 N：…`（与 PGO 叠加一步打印 `==> 与 PGO 叠加`）。与 PGO 叠加使用 `pgo.sh` 生成的 PGO profile，且步骤 4 的对比包含 `pgo.sh` 生成的 `rg-pgo`，因此先运行 `pgo.sh`：
 
 ```bash
 bash examples/pgo.sh
 bash examples/bolt.sh
 ```
 
-未运行 `pgo.sh` 时，`bolt.sh` 跳过步骤 3.8，其余步骤正常执行。
+未运行 `pgo.sh` 时，`bolt.sh` 跳过与 PGO 叠加，其余步骤正常执行。
 
 ## 2. 环境要求
 
@@ -29,7 +29,7 @@ Linux（x86_64 或 AArch64）；rustup 工具链；18 及以上版本的 BOLT �
 
 ## 3. 操作步骤
 
-以下命令和输出摘自 `bolt.sh` 及其在测试环境（第 5 节）中的实际运行结果。`$BIN`、`$DATA` 分别为 `work/bin`、`work/bolt-data`；`<优化参数>` 为 `-reorder-blocks=ext-tsp -reorder-functions=cdsort -split-functions -split-all-cold -split-eh -icf -dyno-stats`，含义见 BOLT.md 3.6 节。
+以下命令和输出摘自 `bolt.sh` 及其在测试环境（第 5 节）中的实际运行结果。`$BIN`、`$DATA` 分别为 `work/bin`、`work/bolt-data`；`<优化参数>` 为 `-reorder-blocks=ext-tsp -reorder-functions=cdsort -split-functions -split-all-cold -split-eh -icf -dyno-stats`，含义见 BOLT.md 步骤 3。
 
 ### 步骤 0：检查环境
 
@@ -111,7 +111,7 @@ BOLT-INFO: basic block reordering modified layout of 429 functions (76.74% of pr
 
 插桩 profile 覆盖 16.7% 的函数，其余为冷代码。`taken branches` 为 profile 上实际发生的跳转次数，其下降表示基本块重排生效；两组数据分别基于各自的 profile，不能直接比较。产物为 12.3–12.4 MB，小于普通版，原因是 BOLT 默认丢弃调试信息。
 
-### 步骤 3.8：与 PGO 叠加
+### 与 PGO 叠加
 
 ```bash
 RUSTFLAGS="-Cprofile-use=work/pgo-data/merged.profdata -Clink-args=-Wl,-q" \
@@ -137,7 +137,7 @@ BOLT profile 在 PGO 版上重新采集。跳转次数减少 7.6%，小于单独
 
 ## 4. 使用 cargo-pgo
 
-[`cargo-pgo.sh`](cargo-pgo.sh) 的步骤 4–6 用 cargo-pgo 完成与步骤 3.8 相同的 PGO + BOLT 流程（其步骤 1–3 为 PGO，见 [PGO 示例](pgo.md) 第 4 节）。cargo-pgo 自动添加重定位参数，并通过 `PATH` 查找 `llvm-bolt` 和 `merge-fdata`。
+[`cargo-pgo.sh`](cargo-pgo.sh) 的步骤 4–6 用 cargo-pgo 完成与上述“与 PGO 叠加”相同的 PGO + BOLT 流程（其步骤 1–3 为 PGO，见 [PGO 示例](pgo.md) 第 4 节）。cargo-pgo 自动添加重定位参数，并通过 `PATH` 查找 `llvm-bolt` 和 `merge-fdata`。
 
 ```bash
 (cd ripgrep && cargo pgo bolt build --with-pgo)              # PGO 优化构建并生成 BOLT 插桩版

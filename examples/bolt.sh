@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # BOLT 示例：对 ripgrep 应用 BOLT（插桩、采样两种方式），并与 PGO 叠加。
-# 步骤编号与 BOLT.md 第 3 节一致，说明见 bolt.md。与 PGO 叠加一步需要先运行 pgo.sh。
+# 步骤编号与 BOLT.md 第 3 节一致，与 PGO 叠加对应 BOLT.md 第 4 节，说明见 bolt.md。与 PGO 叠加需要先运行 pgo.sh。
 set -euo pipefail
 cd "$(dirname "$0")"
 WORK=$(realpath -m "${WORK_DIR:-work}")       # 产物目录，可用 WORK_DIR 覆盖
@@ -63,7 +63,7 @@ step "3：优化"
 optimize "$BIN/rg-reloc" "$BIN/rg-bolt" "$DATA/instr/merged.fdata"
 [ -f "$DATA/perf/rg.fdata" ] && optimize "$BIN/rg-reloc" "$BIN/rg-bolt-perf" "$DATA/perf/rg.fdata"
 
-step "3.8：与 PGO 叠加"
+echo; echo "==> 与 PGO 叠加"
 PGO_PROFILE=$WORK/pgo-data/merged.profdata
 if [ -f "$PGO_PROFILE" ]; then
     RUSTFLAGS="-Cprofile-use=$PGO_PROFILE -Clink-args=-Wl,-q" "${CARGO[@]}" --target-dir "$WORK/target/pgo-reloc"
