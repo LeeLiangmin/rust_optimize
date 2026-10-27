@@ -17,6 +17,13 @@ echo "  $(uname -s) $(uname -m)"
 # PGO 本身不限平台；评测脚本依赖 Linux 的 perf
 [ "$(uname -s)" = Linux ] || { echo "  本实践的评测依赖 Linux perf"; fail=1; }
 
+echo "==> ripgrep 源码"
+if [ -f "$SRC/Cargo.toml" ]; then
+    echo "  $SRC"
+else
+    echo "  未找到 $SRC/Cargo.toml。请把 ripgrep 源码放在与本目录同级的 ripgrep/，或用 RIPGREP_SRC 指定"; fail=1
+fi
+
 echo "==> 工具"
 check cargo     "https://rustup.rs"
 check perf      "原生 Ubuntu：sudo apt install linux-tools-\$(uname -r)；WSL2：从 WSL 内核源码编译 tools/perf"
@@ -50,5 +57,8 @@ echo "  $WORK_DIR"
 case "$WORK_DIR" in
     /mnt/*) echo "  警告：位于 Windows 盘，I/O 开销会掩盖优化效果，建议设置 WORK_DIR=\$HOME/..." ;;
 esac
+if [[ "$ROOT" == /mnt/* && "$WORK_DIR" != "$ROOT/work" ]]; then
+    echo "  本目录位于 Windows 盘，产物改放在 Linux 文件系统中，以免 I/O 开销掩盖优化效果"
+fi
 
 exit $fail

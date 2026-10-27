@@ -19,6 +19,13 @@ case "$(uname -s)/$(uname -m)" in
     *) echo "  BOLT 需要 Linux x86_64 或 AArch64"; fail=1 ;;
 esac
 
+echo "==> ripgrep 源码"
+if [ -f "$SRC/Cargo.toml" ]; then
+    echo "  $SRC"
+else
+    echo "  未找到 $SRC/Cargo.toml。请把 ripgrep 源码放在与本目录同级的 ripgrep/，或用 RIPGREP_SRC 指定"; fail=1
+fi
+
 echo "==> 工具"
 BOLT_HINT="wget https://apt.llvm.org/llvm.sh && sudo bash llvm.sh 21 && sudo apt install bolt-21"
 check cargo       "https://rustup.rs"
@@ -68,5 +75,8 @@ echo "  $WORK_DIR"
 case "$WORK_DIR" in
     /mnt/*) echo "  警告：位于 Windows 盘，I/O 开销会掩盖优化效果，建议设置 WORK_DIR=\$HOME/..." ;;
 esac
+if [[ "$ROOT" == /mnt/* && "$WORK_DIR" != "$ROOT/work" ]]; then
+    echo "  本目录位于 Windows 盘，产物改放在 Linux 文件系统中，以免 I/O 开销掩盖优化效果"
+fi
 
 exit $fail

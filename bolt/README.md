@@ -1,6 +1,6 @@
 # Rust 程序的 BOLT 优化
 
-> 本文介绍 BOLT 的原理和通用操作步骤，适用于任意 Rust 程序。以 ripgrep 为例的完整实践、复现脚本与实测数据见 [practice/](practice/README.md)。
+> 本文介绍 BOLT 的原理和通用操作步骤，适用于任意 Rust 程序。以 ripgrep 为例的完整实践、复现脚本与实测数据见 [PRACTICE.md](PRACTICE.md)。
 
 ## 1. 介绍
 
@@ -18,18 +18,7 @@ BOLT 只做一件事：**优化代码布局**。它让经常一起执行的指�
 - 主要面向 Linux 上的 ELF 二进制。macOS 上有初步的 Mach-O 支持，Windows 上目前不可用。架构方面常用的是 x86_64 和 AArch64，完整的支持范围以所用 LLVM 版本的文档为准。
 - 收益取决于程序本身。热点代码很少、或时间主要花在 I/O 和系统调用上的程序，收益有限。
 
-**版本支持**：
-
-| 时间 | 事件 |
-|:---|:---|
-| 2018–2019 年 | Facebook（现 Meta）公开 BOLT：论文 2018 年 7 月发布于 arXiv，2019 年 2 月发表于 CGO；代码当时在独立仓库 `facebookincubator/BOLT` 中维护 |
-| 2022 年 1 月 | BOLT 并入 LLVM 主仓库 |
-| 2022 年 3 月 | **LLVM 14** 发布，是第一个包含 BOLT 的正式版本 |
-| 2022 年 12 月 | Rust 1.66 开始用 BOLT 优化官方发布版 rustc 中的 LLVM（Linux x86_64） |
-| 2023 年 12 月 | Rust 1.75 开始用 BOLT 优化 `librustc_driver.so` |
-| 2024 年 3 月 | **LLVM 18** 发布，新增函数重排算法 `cdsort`（此前推荐使用 `hfsort+`） |
-
-因此使用 BOLT 至少需要 LLVM 14，本文的命令需要 **LLVM 18 及以上**（因为用到了 `cdsort`）。LLVM 14–17 的替代写法见 3.6 节。BOLT 仍在快速演进，选项名称和默认行为可能随版本变化，以 `llvm-bolt --help` 的输出为准。
+**版本要求**：BOLT 从 **LLVM 14** 起随 LLVM 发布。本文的命令需要 **LLVM 18 及以上**（用到了 `cdsort`），LLVM 14–17 的替代写法见 3.6 节。
 
 ## 2. 基本原理
 
@@ -90,7 +79,7 @@ BOLT 需要知道每条分支实际执行了多少次。有两种获取方式：
 
 ### 3.1 流程总览
 
-![BOLT 优化原理流程图](../assets/BOLT优化原理流程图.png)
+![BOLT 优化原理流程图](assets/BOLT优化原理流程图.png)
 
 | 步骤 | 目的 | 输入 | 输出 |
 |:---|:---|:---|:---|
@@ -290,7 +279,9 @@ hyperfine --warmup 3 './<app> <bench>' './<app>.bolt <bench>'
 perf stat -e cycles:u,instructions:u,L1-icache-load-misses:u,iTLB-load-misses:u -- ./<app>.bolt <bench>
 ```
 
-### 3.8 与 PGO 叠加
+### 3.8 与 PGO 叠加（可选）
+
+如果程序已经做了 PGO，可以在 PGO 的基础上再做 BOLT，否则跳过本节。做法是把步骤 1 的构建换成带 PGO profile 的构建：
 
 1. 按 PGO 流程得到 `merged.profdata`。
 2. 用 PGO profile 构建，同时保留重定位信息：
@@ -304,9 +295,13 @@ perf stat -e cycles:u,instructions:u,L1-icache-load-misses:u,iTLB-load-misses:u 
 
 BOLT profile 必须在 PGO 版本上**重新采集**。PGO 版与普通版的机器码不同，在普通版上采集的 `.fdata` 不能复用。
 
-### 3.9 使用 cargo-pgo 简化
+## 4. 另一种方式：使用 cargo-pgo
 
-[cargo-pgo](https://github.com/Kobzol/cargo-pgo) 把步骤 1–3 封装为命令，自动添加重定位参数、处理 profile 目录。它通过 `PATH` 查找 `llvm-bolt` 和 `merge-fdata`，可用 `cargo pgo info` 检查。
+> 本节是第 3 节步骤 1–3 的**替代方式**，二者选其一，不是额外的步骤。用 cargo-pgo 得到优化版后，仍按步骤 4 验证。
+
+**项目地址**：<https://crates.io/crates/cargo-pgo>
+
+cargo-pgo 把步骤 1–3 封装为几条命令，自动添加重定位参数、处理 profile 目录。它通过 `PATH` 查找 `llvm-bolt` 和 `merge-fdata`，可用 `cargo pgo info` 检查。
 
 ```bash
 cargo install cargo-pgo
@@ -326,7 +321,7 @@ cargo pgo bolt optimize --with-pgo
 
 优化后的产物为 `target/<triple>/release/<app>-bolt-optimized`。
 
-## 4. 注意事项
+## 5. 注意事项
 
 1. **profile 与二进制一一对应**。改代码、改编译选项、叠加 PGO 后，都要重新执行步骤 1–3。
 2. **训练负载要有代表性**。BOLT 只会把负载中执行过的代码当成热代码。

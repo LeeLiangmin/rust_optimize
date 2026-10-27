@@ -1,11 +1,10 @@
 # BOLT 实践脚本的公共部分。由同目录的脚本 source，不单独执行。
-source "$(dirname "${BASH_SOURCE[0]}")/../../common/env.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../common/env.sh"
 
 COMMON="$ROOT/common"
-PRACTICE="$ROOT/bolt/practice"
-# 本实践的产物独立存放，不与 PGO 实践混用
-BIN="$WORK_DIR/bolt/bin"
-DATA="$WORK_DIR/bolt/data"
+PRACTICE="$ROOT/practice"
+BIN="$WORK_DIR/bin"
+DATA="$WORK_DIR/data"
 mkdir -p "$BIN" "$DATA"
 
 # 步骤 03 的优化参数，插桩、采样、PGO+BOLT 三种情况共用

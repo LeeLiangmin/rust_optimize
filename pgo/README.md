@@ -1,6 +1,6 @@
 # Rust 程序的 PGO 优化
 
-> 本文介绍 PGO 的原理和通用操作步骤，适用于任意 Rust 程序。以 ripgrep 为例的完整实践、复现脚本与实测数据见 [practice/](practice/README.md)。
+> 本文介绍 PGO 的原理和通用操作步骤，适用于任意 Rust 程序。以 ripgrep 为例的完整实践、复现脚本与实测数据见 [PRACTICE.md](PRACTICE.md)。
 
 ## 1. 介绍
 
@@ -66,13 +66,13 @@ rustc 基于 LLVM，PGO 能力直接来自 LLVM，通过 `-Cprofile-generate` �
 | 改变什么 | 内联、分支布局等编译决策 | 指令在二进制中的位置 |
 | 主要收益 | 执行的指令更少 | i-cache / iTLB 未命中更少 |
 
-两者可以叠加，顺序必须是**先 PGO，后 BOLT**，详见 [BOLT 文档](../bolt/README.md)。
+两者可以叠加，顺序必须是**先 PGO，后 BOLT**，详见 BOLT 文档。
 
 ## 3. 操作步骤
 
 ### 3.1 流程总览
 
-![PGO 优化流程图](../assets/PGO优化流程图.png)
+![PGO 优化流程图](assets/PGO优化流程图.png)
 
 | 步骤 | 目的 | 输入 | 输出 |
 |:---|:---|:---|:---|
@@ -203,9 +203,13 @@ hyperfine --warmup 3 './<app>-base <bench>' './<app>-pgo <bench>'
 perf stat -e cycles:u,instructions:u,L1-icache-load-misses:u -- ./<app>-pgo <bench>
 ```
 
-### 3.8 使用 cargo-pgo 简化
+## 4. 另一种方式：使用 cargo-pgo
 
-[cargo-pgo](https://github.com/Kobzol/cargo-pgo) 把步骤 1–4 封装为命令，自动处理 `--target`、profile 目录和 `llvm-profdata` 路径。可用 `cargo pgo info` 检查环境。
+> 本节是第 3 节步骤 1–4 的**替代方式**，二者选其一，不是额外的步骤。用 cargo-pgo 得到优化版后，仍按步骤 5 验证。
+
+**项目地址**：<https://crates.io/crates/cargo-pgo>
+
+cargo-pgo 把步骤 1–4 封装为几条命令，自动处理 `--target`、profile 目录和 `llvm-profdata` 路径。可用 `cargo pgo info` 检查环境。
 
 ```bash
 cargo install cargo-pgo
@@ -217,7 +221,7 @@ cargo pgo optimize                               # 步骤 3 + 4
 
 也可以用测试或基准测试作为负载：`cargo pgo test`、`cargo pgo bench` 会以插桩方式运行它们并采集 profile。
 
-## 4. 注意事项
+## 5. 注意事项
 
 1. **profile 与源码对应**。改动过的函数无法使用旧 profile。代码变化较大时要重新执行步骤 1–3。
 2. **训练负载决定效果**。负载缺乏代表性时，真实热点会被当成冷代码处理，程序反而可能变慢。

@@ -13,7 +13,7 @@ step() {
 }
 
 step 00-check-env.sh
-step ../../common/corpus.sh
+step ../common/corpus.sh
 step 01-build.sh
 step 02a-instrument.sh
 step 02b-sample.sh
