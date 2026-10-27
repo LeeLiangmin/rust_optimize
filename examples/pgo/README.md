@@ -2,7 +2,7 @@
 
 ## 1. 概述
 
-本示例按 [PGO.md](../PGO.md) 第 3 节的步骤，对 ripgrep 14.1.1（源码位于 `examples/ripgrep/`，未修改）应用 PGO：以 Linux 6.6 内核源码为语料，用 9 条典型搜索采集 profile，重新编译得到 PGO 版，再用另外 7 条搜索对比 PGO 版与普通版。ripgrep 是示例程序，同一流程适用于其他 Rust 程序。
+本示例按 [PGO.md](../../PGO.md) 第 3 节的步骤，对 ripgrep 应用 PGO：用 9 条典型搜索采集 profile，重新编译得到 PGO 版，再用 7 条评测搜索对比 PGO 版与普通版。实验对象、语料、负载、评测方法和运行环境见 [示例设计](../README.md)；用 cargo-pgo 完成同样流程的示例见 [cargo-pgo/README.md](../cargo-pgo/README.md)。
 
 | 步骤 | 操作 | 产出 |
 |:---|:---|:---|
@@ -11,29 +11,25 @@
 | 2 | 以 `rg-instr` 执行 9 条训练搜索 | `work/pgo-data/*.profraw` |
 | 3 | 合并 profile（`llvm-profdata merge`） | `work/pgo-data/merged.profdata` |
 | 4 | 依据 profile 重新编译（`-Cprofile-use`） | `rg-pgo` |
-| 5 | 以 7 条评测搜索对比 `rg-base` 与 `rg-pgo` | `results/pgo.md` |
+| 5 | 以 7 条评测搜索对比 `rg-base` 与 `rg-pgo` | `results.md` |
 
-全部步骤由 [`pgo.sh`](pgo.sh) 完成，每一步开始时打印 `==> 步骤 N：…`：
+全部步骤由 [`run.sh`](run.sh) 完成，每一步开始时打印 `==> 步骤 N：…`：
 
 ```bash
-bash examples/pgo.sh
+bash examples/pgo/run.sh
 ```
 
-## 2. 环境要求
+## 2. 操作步骤
 
-Linux；rustup 工具链及 `llvm-tools-preview` 组件；`perf`（需能读取硬件计数器）、`hyperfine`、`curl`；约 2.5 GB 磁盘空间。产物默认写入 `examples/work/`，可用环境变量 `WORK_DIR` 修改；在 WSL 中，`WORK_DIR` 应位于 Linux 文件系统内，否则文件共享的 I/O 开销会影响测量结果。
-
-## 3. 操作步骤
-
-以下命令和输出摘自 `pgo.sh` 及其在测试环境（第 5 节）中的实际运行结果。`$BIN`、`$PGO_DIR` 分别为 `work/bin`、`work/pgo-data`，`$TARGET` 为 `rustc -vV` 输出中的 `host`。
+以下命令和输出摘自 `run.sh` 及其在测试环境（见[示例设计](../README.md#运行环境)）中的实际运行结果。`$BIN`、`$PGO_DIR` 分别为 `work/bin`、`work/pgo-data`，`$TARGET` 为 `rustc -vV` 输出中的 `host`。
 
 ### 步骤 0：检查环境
 
-`pgo.sh` 检查 `llvm-profdata` 是否存在并输出其版本，然后由 [`workload.sh`](workload.sh) 下载语料（约 140 MB 压缩包，解压后 1.5 GB），校验 sha256 后解压；语料已存在时跳过。
+`run.sh` 检查 `llvm-profdata` 是否存在并输出其版本，然后由 [`common/workload.sh`](../common/workload.sh) 下载并校验语料；语料已存在时跳过。
 
 ```text
 LLVM version 21.1.8-rust-1.93.1-stable
-/root/clone_test/examples/work/linux-6.6.tar.xz: OK
+.../examples/work/linux-6.6.tar.xz: OK
 ```
 
 `llvm-profdata` 的 LLVM 版本与 rustc 一致（21.1.8）。
@@ -56,7 +52,7 @@ RUSTFLAGS="-Cprofile-generate=$PGO_DIR" cargo build --release --target $TARGET -
 
 ```bash
 rm -rf $PGO_DIR
-./workload.sh train $BIN/rg-instr
+../common/workload.sh train $BIN/rg-instr
 ```
 
 ```text
@@ -67,7 +63,7 @@ rm -rf $PGO_DIR
 -rw-r--r-- 1 root root 1.9M ... default_1517753687113566901_0.profraw
 ```
 
-9 条训练搜索只生成 1 个 `.profraw`：默认文件名不含进程号，各次运行的计数累加在同一文件中。训练搜索的内容见 `workload.sh`，覆盖字面量、忽略大小写、整词、正则、多选一、计数、固定字符串和目录遍历。
+9 条训练搜索只生成 1 个 `.profraw`：默认文件名不含进程号，各次运行的计数累加在同一文件中。
 
 ### 步骤 3：合并 profile
 
@@ -97,37 +93,19 @@ RUSTFLAGS="-Cprofile-use=$PGO_DIR/merged.profdata -Cllvm-args=-pgo-warn-missing-
 -rwxr-xr-x 1 root root 24M ... work/bin/rg-pgo
 ```
 
-`pgo.sh` 统计构建日志中 `no profile data available` 告警的条数。0 条表示 profile 与源码匹配；使用无关程序的 profile 编译 ripgrep 时，此类告警为 8341 条。`rg-pgo` 为 24.9 MB，比普通版小约 9%，原因是 LLVM 对冷代码减少内联并按体积优化。
+`run.sh` 统计构建日志中 `no profile data available` 告警的条数。0 条表示 profile 与源码匹配；使用无关程序的 profile 编译 ripgrep 时，此类告警为 8341 条。`rg-pgo` 为 24.9 MB，比普通版小约 9%，原因是 LLVM 对冷代码减少内联并按体积优化。
 
 ### 步骤 5：验证
 
 ```bash
-./bench.sh results/pgo.md $BIN/rg-base $BIN/rg-pgo
+../common/bench.sh results.md $BIN/rg-base $BIN/rg-pgo
 ```
 
-[`bench.sh`](bench.sh) 对 7 个评测用例依次执行：比较两个版本输出排序后的 sha256，不一致则退出；用 `hyperfine --warmup 3 --runs 50` 测量墙钟时间；用 `perf stat -r 5` 测量用户态（`:u`）的 cycles、指令数、L1 i-cache 未命中和 iTLB 未命中。本次运行 7 个用例的输出全部一致，结果写入 [`results/pgo.md`](results/pgo.md)。
+评测方法见 [示例设计](../README.md#评测方法与指标)。本次运行 7 个用例的输出全部一致，结果写入 [`results.md`](results.md)。
 
-## 4. 使用 cargo-pgo
+## 3. 结果
 
-[`cargo-pgo.sh`](cargo-pgo.sh) 的步骤 1–3 用 cargo-pgo 完成与步骤 1–4 相同的 PGO 流程。cargo-pgo 自动设置 `--target`、profile 目录和 `llvm-profdata` 路径。
-
-```bash
-(cd ripgrep && cargo pgo build)                    # 插桩构建
-./workload.sh train $OUT/rg                        # 采集
-(cd ripgrep && cargo pgo optimize)                 # 合并并优化构建 → rg-cargo-pgo
-```
-
-```text
-INFO  cargo_pgo::pgo::optimize] Found 1 PGO profile file with total size 1.80 MiB at .../pgo-profiles.
-INFO  cargo_pgo::pgo::optimize] Merged PGO profile(s) to .../merged-<hash>.profdata.
-PGO optimized build successfully finished.
-```
-
-`cargo-pgo.sh` 最后比较产物与 `rg-base` 在 `rg -w PM_RESUME` 上的输出 sha256，两者一致。`rg-cargo-pgo` 为 25.4 MB，未对其进行性能评测。`cargo-pgo.sh` 需要先运行 `pgo.sh`，并需要 `cargo install cargo-pgo`。
-
-## 5. 结果
-
-测试环境：Intel Core i7-9750H，WSL2 Ubuntu 24.04，rustc 1.93.1（LLVM 21.1.8）。`pgo.sh` 全程用时 354 秒，含语料下载。
+`run.sh` 全程用时 354 秒，含语料下载。
 
 `rg-pgo` 相对 `rg-base` 的用户态硬件计数器变化：
 

@@ -2,7 +2,7 @@
 
 ## 1. 概述
 
-本示例按 [BOLT.md](../BOLT.md) 第 3、4 节的步骤，对 ripgrep 14.1.1（源码位于 `examples/ripgrep/`，未修改）应用 BOLT：分别以插桩和采样方式采集 profile，生成 BOLT 版；再在 PGO 版的基础上执行 BOLT，生成 PGO + BOLT 版；最后用 7 条评测搜索对比各版本与普通版。语料、训练负载和评测负载与 [PGO 示例](pgo.md) 相同。ripgrep 是示例程序，同一流程适用于其他 Rust 程序。
+本示例按 [BOLT.md](../../BOLT.md) 第 3、4 节的步骤，对 ripgrep 应用 BOLT：分别以插桩和采样方式采集 profile，生成 BOLT 版；再在 PGO 版的基础上执行 BOLT，生成 PGO + BOLT 版；最后用 7 条评测搜索对比各版本与普通版。实验对象、语料、负载、评测方法和运行环境见 [示例设计](../README.md)；用 cargo-pgo 完成 PGO + BOLT 的示例见 [cargo-pgo/README.md](../cargo-pgo/README.md)。
 
 | 步骤 | 操作 | 产出 |
 |:---|:---|:---|
@@ -12,28 +12,24 @@
 | 2b | 采样：以 `rg-reloc` 执行训练搜索，`perf record` 采样，`perf2bolt` 转换；CPU 不支持 LBR 时跳过 | `work/bolt-data/perf/rg.fdata` |
 | 3 | 以两份 profile 分别优化 `rg-reloc` | `rg-bolt`；`rg-bolt-perf` |
 | 叠加 | 用 PGO profile 构建带重定位的版本，重复插桩采集和优化 | `rg-pgo-bolt` |
-| 4 | 以 7 条评测搜索对比各版本与 `rg-base` | `results/bolt.md` |
+| 4 | 以 7 条评测搜索对比各版本与 `rg-base` | `results.md` |
 
-全部步骤由 [`bolt.sh`](bolt.sh) 完成，每一步开始时打印 `==> 步骤 N：…`（与 PGO 叠加一步打印 `==> 与 PGO 叠加`）。与 PGO 叠加使用 `pgo.sh` 生成的 PGO profile，且步骤 4 的对比包含 `pgo.sh` 生成的 `rg-pgo`，因此先运行 `pgo.sh`：
+全部步骤由 [`run.sh`](run.sh) 完成，每一步开始时打印 `==> 步骤 N：…`（与 PGO 叠加一步打印 `==> 与 PGO 叠加`）。与 PGO 叠加使用 PGO 示例生成的 profile，步骤 4 的对比包含 PGO 示例生成的 `rg-pgo`，因此先运行 PGO 示例：
 
 ```bash
-bash examples/pgo.sh
-bash examples/bolt.sh
+bash examples/pgo/run.sh
+bash examples/bolt/run.sh
 ```
 
-未运行 `pgo.sh` 时，`bolt.sh` 跳过与 PGO 叠加，其余步骤正常执行。
+未运行 PGO 示例时，`run.sh` 跳过与 PGO 叠加，其余步骤正常执行。
 
-## 2. 环境要求
+## 2. 操作步骤
 
-Linux（x86_64 或 AArch64）；rustup 工具链；18 及以上版本的 BOLT 工具 `llvm-bolt`、`merge-fdata`、`perf2bolt`，位于 `PATH` 中（apt.llvm.org 的 `bolt-21` 安装在 `/usr/lib/llvm-21/bin`）；`perf`（需能读取硬件计数器）、`hyperfine`、`curl`；步骤 2b 需要 CPU 支持 LBR；约 3 GB 磁盘空间。产物目录和 WSL 下的注意事项与 [PGO 示例](pgo.md) 相同。
-
-## 3. 操作步骤
-
-以下命令和输出摘自 `bolt.sh` 及其在测试环境（第 5 节）中的实际运行结果。`$BIN`、`$DATA` 分别为 `work/bin`、`work/bolt-data`；`<优化参数>` 为 `-reorder-blocks=ext-tsp -reorder-functions=cdsort -split-functions -split-all-cold -split-eh -icf -dyno-stats`，含义见 BOLT.md 步骤 3。
+以下命令和输出摘自 `run.sh` 及其在测试环境（见[示例设计](../README.md#运行环境)）中的实际运行结果。`$BIN`、`$DATA` 分别为 `work/bin`、`work/bolt-data`；`<优化参数>` 为 `-reorder-blocks=ext-tsp -reorder-functions=cdsort -split-functions -split-all-cold -split-eh -icf -dyno-stats`，含义见 BOLT.md 步骤 3。
 
 ### 步骤 0：检查环境
 
-`bolt.sh` 检查 `llvm-bolt` 是否在 `PATH` 中，以及版本是否为 18 及以上，然后下载语料（已存在时跳过）。
+`run.sh` 检查 `llvm-bolt` 是否在 `PATH` 中，以及版本是否为 18 及以上，然后下载语料（已存在时跳过）。apt.llvm.org 的 `bolt-21` 安装在 `/usr/lib/llvm-21/bin`，需先将该目录加入 `PATH`。
 
 ```text
 BOLT 版本：21
@@ -60,7 +56,7 @@ readelf -S $BIN/rg-reloc | grep -q rela.text && echo "重定位信息已保留"
 ```bash
 llvm-bolt $BIN/rg-reloc -instrument -o $DATA/instr/rg.inst \
   --instrumentation-file=$DATA/instr/prof.fdata --instrumentation-file-append-pid
-./workload.sh train $DATA/instr/rg.inst
+../common/workload.sh train $DATA/instr/rg.inst
 merge-fdata $DATA/instr/prof.fdata.*.fdata > $DATA/instr/merged.fdata
 ```
 
@@ -77,7 +73,7 @@ profile 文件数： 9
 ### 步骤 2b：采样采集
 
 ```bash
-perf record -e cycles:u -j any,u -o $DATA/perf/perf.data -- ./workload.sh train $BIN/rg-reloc
+perf record -e cycles:u -j any,u -o $DATA/perf/perf.data -- ../common/workload.sh train $BIN/rg-reloc
 perf2bolt -p $DATA/perf/perf.data -o $DATA/perf/rg.fdata $BIN/rg-reloc
 ```
 
@@ -96,7 +92,7 @@ llvm-bolt $BIN/rg-reloc -o $BIN/rg-bolt      -data=$DATA/instr/merged.fdata <优
 llvm-bolt $BIN/rg-reloc -o $BIN/rg-bolt-perf -data=$DATA/perf/rg.fdata      <优化参数>
 ```
 
-`bolt.sh` 只显示 BOLT 输出中的 profile 覆盖率、基本块重排和跳转统计：
+`run.sh` 只显示 BOLT 输出中的 profile 覆盖率、基本块重排和跳转统计：
 
 ```text
 BOLT-INFO: 1197 out of 7147 functions in the binary (16.7%) have non-empty execution profile
@@ -130,32 +126,14 @@ BOLT profile 在 PGO 版上重新采集。跳转次数减少 7.6%，小于单独
 ### 步骤 4：验证
 
 ```bash
-./bench.sh results/bolt.md $BIN/rg-base $BIN/rg-pgo $BIN/rg-bolt $BIN/rg-bolt-perf $BIN/rg-pgo-bolt
+../common/bench.sh results.md $BIN/rg-base $BIN/rg-pgo $BIN/rg-bolt $BIN/rg-bolt-perf $BIN/rg-pgo-bolt
 ```
 
-评测方法与 [PGO 示例](pgo.md) 的步骤 5 相同。本次运行 7 个用例中五个版本的输出全部一致，结果写入 [`results/bolt.md`](results/bolt.md)。
+评测方法见 [示例设计](../README.md#评测方法与指标)。本次运行 7 个用例中五个版本的输出全部一致，结果写入 [`results.md`](results.md)。
 
-## 4. 使用 cargo-pgo
+## 3. 结果
 
-[`cargo-pgo.sh`](cargo-pgo.sh) 的步骤 4–6 用 cargo-pgo 完成与上述“与 PGO 叠加”相同的 PGO + BOLT 流程（其步骤 1–3 为 PGO，见 [PGO 示例](pgo.md) 第 4 节）。cargo-pgo 自动添加重定位参数，并通过 `PATH` 查找 `llvm-bolt` 和 `merge-fdata`。
-
-```bash
-(cd ripgrep && cargo pgo bolt build --with-pgo)              # PGO 优化构建并生成 BOLT 插桩版
-./workload.sh train $OUT/rg-bolt-instrumented                # 采集
-(cd ripgrep && cargo pgo bolt optimize --with-pgo)           # BOLT 优化 → rg-cargo-pgo-bolt
-```
-
-```text
-INFO  cargo_pgo::bolt::instrument] Binary rg instrumented successfully. Now run .../rg-bolt-instrumented on your workload.
-INFO  cargo_pgo::bolt::optimize] Merged BOLT profile(s) to .../bolt-profiles/rg/merged.profdata.
-INFO  cargo_pgo::bolt::optimize] Binary rg successfully optimized with BOLT.
-```
-
-`cargo-pgo.sh` 最后比较产物与 `rg-base` 在 `rg -w PM_RESUME` 上的输出 sha256，两者一致。`rg-cargo-pgo-bolt` 为 28.9 MB，未对其进行性能评测。
-
-## 5. 结果
-
-测试环境：Intel Core i7-9750H（支持 LBR），WSL2 Ubuntu 24.04，rustc 1.93.1，BOLT 21.1.8。`bolt.sh` 全程用时 567 秒。
+测试环境的 CPU 支持 LBR。`run.sh` 全程用时 567 秒。
 
 用户态 cycles 相对 `rg-base` 的变化：
 
@@ -195,4 +173,4 @@ BOLT 版的指令数基本不变（变化不超过 3.5%），L1 i-cache 未命�
 
 PGO + BOLT 在 6 个用例中 cycles 降幅最大，i-cache 未命中减少 44.4%–48.8%。no_literal 的耗时集中在正则引擎的一个小循环内，各版本的 cycles 变化均不超过 2%；PGO 版和 PGO + BOLT 版在该用例中的指令数增加 11.1%，原因本文未分析。
 
-墙钟时间的变化方向不一致，与 cycles 的变化也不对应（BOLT 插桩版在 word 中的标准差为 39.7 ms），不能据此判断端到端性能。ripgrep 在该负载下的 CPU 时间约 58% 为内核态（见 [PGO 示例](pgo.md) 第 5 节），BOLT 只作用于用户态代码。
+墙钟时间的变化方向不一致，与 cycles 的变化也不对应（BOLT 插桩版在 word 中的标准差为 39.7 ms），不能据此判断端到端性能。ripgrep 在该负载下的 CPU 时间约 58% 为内核态（见 [PGO 示例](../pgo/README.md) 第 3 节），BOLT 只作用于用户态代码。

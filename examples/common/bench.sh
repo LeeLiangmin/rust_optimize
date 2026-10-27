@@ -4,8 +4,8 @@
 # 评测负载取自 ripgrep 作者的基准集（linux_* 系列），与训练负载不重复。
 # 用法：bench.sh <结果文件.md> <rg-基线> <rg-对比1> ...
 set -euo pipefail
-cd "$(dirname "$0")"
-WORK=$(realpath -m "${WORK_DIR:-work}")
+EX=$(cd "$(dirname "$0")/.." && pwd)             # examples/
+WORK=$(realpath -m "${WORK_DIR:-$EX/work}")
 CORPUS="$WORK/linux-6.6"
 OUT="$1"; shift
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT

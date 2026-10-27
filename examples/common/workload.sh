@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# 语料与训练负载，供 pgo.sh、bolt.sh、cargo-pgo.sh、bench.sh 调用。
+# 语料与训练负载，供各示例的 run.sh 及 bench.sh 调用。
 #   workload.sh corpus       下载并解压语料（Linux 6.6 源码），已存在则跳过
 #   workload.sh train <rg>   用指定的 rg 在语料上执行 9 条训练搜索，用于采集 profile
 set -euo pipefail
-cd "$(dirname "$0")"
-WORK=$(realpath -m "${WORK_DIR:-work}")
+EX=$(cd "$(dirname "$0")/.." && pwd)             # examples/
+WORK=$(realpath -m "${WORK_DIR:-$EX/work}")
 CORPUS="$WORK/linux-6.6"
 
 corpus() {

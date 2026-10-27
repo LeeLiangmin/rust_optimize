@@ -1,6 +1,6 @@
 # Rust 程序的 PGO 优化
 
-本文说明 PGO 的原理和在 Rust 程序上的操作步骤，适用于任意 Rust 程序。以 ripgrep 为例的完整示例、脚本和实测数据见 [examples/pgo.md](examples/pgo.md)。
+本文说明 PGO 的原理和在 Rust 程序上的操作步骤，适用于任意 Rust 程序。以 ripgrep 为例的完整示例、脚本和实测数据见 [examples/pgo/README.md](examples/pgo/README.md)。
 
 ## 1. 概述
 
@@ -134,7 +134,7 @@ perf stat -e cycles:u,instructions:u,L1-icache-load-misses:u -- ./<app>-pgo <ben
 
 ## 4. 使用 cargo-pgo
 
-[cargo-pgo](https://crates.io/crates/cargo-pgo) 将步骤 1–4 封装为几条命令，自动处理 `--target`、profile 目录和 `llvm-profdata` 路径，可替代手动方式；得到优化版后，仍按步骤 5 验证。`cargo pgo info` 用于检查环境，完整示例见 [examples/cargo-pgo.sh](examples/cargo-pgo.sh)。
+[cargo-pgo](https://crates.io/crates/cargo-pgo) 将步骤 1–4 封装为几条命令，自动处理 `--target`、profile 目录和 `llvm-profdata` 路径，可替代手动方式；得到优化版后，仍按步骤 5 验证。`cargo pgo info` 用于检查环境，完整示例见 [examples/cargo-pgo/README.md](examples/cargo-pgo/README.md)。
 
 ```bash
 cargo install cargo-pgo
