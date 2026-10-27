@@ -42,7 +42,12 @@ fi
 
 echo "==> 版本"
 echo "  $(rustc -V)，$(rustc -vV | grep LLVM)"
-echo "  BOLT $(llvm-bolt --version | sed -n 's/.*LLVM version //p')"
+bolt_ver="$(llvm-bolt --version | sed -n 's/.*LLVM version //p')"
+echo "  BOLT $bolt_ver"
+# 步骤 03 使用 -reorder-functions=cdsort，LLVM 18 才提供
+if [ "${bolt_ver%%.*}" -lt 18 ]; then
+    echo "  BOLT 版本需要 18 及以上（步骤 03 用到 cdsort）。可用 LLVM_BIN 指定较新版本的目录"; fail=1
+fi
 
 echo "==> 硬件计数器（评测需要）"
 if perf stat -e cycles:u,instructions:u -- true > /dev/null 2>&1; then

@@ -18,6 +18,19 @@ BOLT 只做一件事：**优化代码布局**。它让经常一起执行的指�
 - 主要面向 Linux 上的 ELF 二进制。macOS 上有初步的 Mach-O 支持，Windows 上目前不可用。架构方面常用的是 x86_64 和 AArch64，完整的支持范围以所用 LLVM 版本的文档为准。
 - 收益取决于程序本身。热点代码很少、或时间主要花在 I/O 和系统调用上的程序，收益有限。
 
+**版本支持**：
+
+| 时间 | 事件 |
+|:---|:---|
+| 2018–2019 年 | Facebook（现 Meta）公开 BOLT：论文 2018 年 7 月发布于 arXiv，2019 年 2 月发表于 CGO；代码当时在独立仓库 `facebookincubator/BOLT` 中维护 |
+| 2022 年 1 月 | BOLT 并入 LLVM 主仓库 |
+| 2022 年 3 月 | **LLVM 14** 发布，是第一个包含 BOLT 的正式版本 |
+| 2022 年 12 月 | Rust 1.66 开始用 BOLT 优化官方发布版 rustc 中的 LLVM（Linux x86_64） |
+| 2023 年 12 月 | Rust 1.75 开始用 BOLT 优化 `librustc_driver.so` |
+| 2024 年 3 月 | **LLVM 18** 发布，新增函数重排算法 `cdsort`（此前推荐使用 `hfsort+`） |
+
+因此使用 BOLT 至少需要 LLVM 14，本文的命令需要 **LLVM 18 及以上**（因为用到了 `cdsort`）。LLVM 14–17 的替代写法见 3.6 节。BOLT 仍在快速演进，选项名称和默认行为可能随版本变化，以 `llvm-bolt --help` 的输出为准。
+
 ## 2. 基本原理
 
 ### 2.1 代码布局为什么影响性能
@@ -247,6 +260,8 @@ llvm-bolt <app> -o <app>.bolt -data=<app>.fdata \
 | `-reorder-functions=cdsort` | 用 cache-directed sort 算法重排函数 | 函数重排 |
 | `-icf` | 合并机器码完全相同的函数 | — |
 | `-dyno-stats` | 打印 profile 上优化前后的分支统计 | 用于检查 |
+
+**LLVM 14–17**：这些版本还没有 `cdsort`，把 `-reorder-functions=cdsort` 换成 `-reorder-functions=hfsort+`，其余参数不变。
 
 **输出**：`<app>.bolt`
 

@@ -9,7 +9,7 @@
 | 系统 | Linux x86_64 或 AArch64 | WSL2，Ubuntu 24.04 |
 | CPU | 任意；采样方式需要支持 LBR | Intel Core i7-9750H（支持 LBR） |
 | Rust | rustup 工具链 + `llvm-tools-preview` 组件 | rustc 1.93.1（LLVM 21.1.8） |
-| BOLT | `llvm-bolt`、`merge-fdata`、`perf2bolt` | 21.1.8，apt.llvm.org 的 `bolt-21` |
+| BOLT | LLVM 18 及以上的 `llvm-bolt`、`merge-fdata`、`perf2bolt`（步骤 03 用到 `cdsort`） | 21.1.8，apt.llvm.org 的 `bolt-21` |
 | 其他 | `perf`（需能读硬件计数器）、`hyperfine`、`curl` | — |
 | 可选 | `cargo-pgo`（仅 `cargo-pgo.sh` 需要） | cargo-pgo 0.3.0 |
 | 磁盘 | 约 3 GB（语料 1.6 GB，构建缓存 0.8 GB，产物与 profile 0.4 GB） | — |
@@ -91,7 +91,7 @@ bash bolt/practice/run.sh
 [`00-check-env.sh`](00-check-env.sh) 检查以下各项，必需项缺失时给出安装方法并退出：
 
 - 平台是否为 Linux x86_64 / AArch64；
-- 工具：`cargo`、`llvm-profdata`、`llvm-bolt`、`merge-fdata`、`perf2bolt`、`perf`、`hyperfine`、`curl`；
+- 工具：`cargo`、`llvm-profdata`、`llvm-bolt`、`merge-fdata`、`perf2bolt`、`perf`、`hyperfine`、`curl`；BOLT 版本是否为 18 及以上；
 - `perf stat` 能否读取硬件计数器（步骤 05 需要）；
 - 能否用 `perf record -j any,u` 记录分支，即是否支持 LBR（步骤 02b 需要，不支持时只跳过 02b）；
 - `WORK_DIR` 是否位于 Windows 盘。
