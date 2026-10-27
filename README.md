@@ -43,31 +43,29 @@ bash pgo/practice/run.sh     # PGO，结果写入 pgo/practice/results.md
 bash bolt/practice/run.sh    # BOLT 及 PGO + BOLT，结果写入 bolt/practice/results.md
 ```
 
-产物、profile 和语料默认放在各自目录下的 `work/`（如 `pgo/work/`），不会被提交。仓库位于 WSL 的 Windows 盘（`/mnt/*`）时，为避免文件共享的 I/O 开销掩盖优化效果，会自动改放到 `~/rust_optimize_work/pgo`、`~/rust_optimize_work/bolt`。也可以用环境变量 `WORK_DIR` 指定。两个实践各自保存一份语料和构建缓存，同时运行两者约需 5.5 GB 磁盘。环境要求和分步说明见各实践文档。
-
-`pgo/` 和 `bolt/` 互不依赖，都可以单独拿出去使用，只需要 ripgrep 源码：默认取同级的 `ripgrep/`，也可以用环境变量 `RIPGREP_SRC` 指定。
+产物、profile 和语料默认放在仓库根目录的 `work/` 下，不会被提交：语料两个实践共用一份，构建缓存和产物分别在 `work/pgo/`、`work/bolt/`。仓库位于 WSL 的 Windows 盘（`/mnt/*`）时，为避免文件共享的 I/O 开销掩盖优化效果，会自动改放到 `~/rust_optimize_work`。也可以用环境变量 `WORK_DIR` 指定。两个实践都运行时约需 4 GB 磁盘。环境要求和分步说明见各实践文档。
 
 ## 目录
 
 ```
-├── ripgrep/              ripgrep 14.1.1 源码（未修改，两者共用）
-├── pgo/                  可单独使用
+├── ripgrep/              ripgrep 14.1.1 源码（未修改）
+├── common/               两个实践共用的脚本
+│   ├── env.sh            公共变量与构建函数
+│   ├── corpus.sh         下载语料
+│   ├── train.sh          训练负载
+│   └── bench.sh          评测：输出一致性校验 + 计时 + 硬件计数器
+├── work/                 运行时生成，不提交：linux-6.6/（语料，共用）、pgo/、bolt/（各自的构建缓存与产物）
+├── pgo/
 │   ├── README.md         PGO 通用文档：介绍、基本原理、操作步骤
 │   ├── PRACTICE.md       PGO 实践文档：以 ripgrep 为例的实验设计、步骤说明、结果与分析
 │   ├── assets/           流程图
-│   ├── common/           语料下载、训练负载、评测等公共脚本
-│   ├── practice/         实践脚本（run.sh、00–05）与实测结果 results.md
-│   └── work/             运行时生成：语料、构建产物、profile（不提交）
-└── bolt/                 可单独使用，结构同 pgo/
+│   └── practice/         实践脚本（run.sh、00–05）与实测结果 results.md
+└── bolt/                 结构同 pgo/
     ├── README.md         BOLT 通用文档
     ├── PRACTICE.md       BOLT 实践文档（含 PGO + BOLT）
     ├── assets/
-    ├── common/
-    ├── practice/
-    └── work/
+    └── practice/
 ```
-
-两个目录下的 `common/` 中，`corpus.sh`、`train.sh`、`bench.sh` 内容相同，保证两个实践使用同一套语料和负载；修改时需要同步修改两份。
 
 ## 参考
 

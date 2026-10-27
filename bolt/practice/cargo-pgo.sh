@@ -5,7 +5,7 @@ source "$(dirname "$0")/lib.sh"
 command -v cargo-pgo > /dev/null || { echo "未安装 cargo-pgo：cargo install cargo-pgo" >&2; exit 1; }
 need "$BIN/rg-base" 01-build.sh
 
-export CARGO_TARGET_DIR="$WORK_DIR/target/cargo-pgo"
+export CARGO_TARGET_DIR="$TECH_WORK/target/cargo-pgo"
 OUT="$CARGO_TARGET_DIR/$TARGET/release"
 cd "$SRC"
 

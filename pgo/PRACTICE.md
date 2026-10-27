@@ -50,13 +50,7 @@ cd rust_optimize
 bash pgo/practice/run.sh
 ```
 
-`pgo/` 目录也可以单独拿出去使用，它不依赖仓库中的其他目录，只需要 ripgrep 源码。源码默认取与 `pgo/` 同级的 `ripgrep/`，也可以用 `RIPGREP_SRC` 指定：
-
-```bash
-RIPGREP_SRC=/path/to/ripgrep bash pgo/practice/run.sh
-```
-
-`run.sh` 依次执行下表中的脚本（均位于 `practice/` 目录，`common/corpus.sh` 除外），任何一步失败都会立即停止。本文环境下全程约 7.5 分钟，其中评测约 3 分钟。
+`run.sh` 依次执行下表中的脚本（除仓库根目录的 `common/corpus.sh` 外，均位于 `practice/` 目录），任何一步失败都会立即停止。本文环境下全程约 7.5 分钟，其中评测约 3 分钟。
 
 | 脚本 | 内容 | 对应通用文档 | 本文用时 |
 |:---|:---|:---|---:|
@@ -75,11 +69,10 @@ RIPGREP_SRC=/path/to/ripgrep bash pgo/practice/run.sh
 
 | 变量 | 默认值 | 说明 |
 |:---|:---|:---|
-| `RIPGREP_SRC` | 与本目录同级的 `ripgrep/` | ripgrep 源码位置 |
-| `WORK_DIR` | `pgo/work/`；本目录位于 WSL 的 `/mnt/*` 下时为 `~/rust_optimize_work/pgo` | 语料、构建产物、profile 的存放位置，已在 `.gitignore` 中忽略。WSL 下不要放在 `/mnt/c` 等 Windows 盘上，否则文件共享的 I/O 开销会掩盖优化效果 |
+| `WORK_DIR` | 仓库根目录下的 `work/`；仓库位于 WSL 的 `/mnt/*` 下时为 `~/rust_optimize_work` | 语料、构建产物、profile 的存放位置，已在 `.gitignore` 中忽略。WSL 下不要放在 `/mnt/c` 等 Windows 盘上，否则文件共享的 I/O 开销会掩盖优化效果 |
 | `KERNEL_MIRROR` | `https://cdn.kernel.org/pub/linux/kernel` | 语料下载源。国内可用 `https://mirrors.tuna.tsinghua.edu.cn/kernel` |
 
-工作目录的结构：语料在 `linux-6.6/`，cargo 构建缓存在 `target/`，可执行文件在 `bin/`，profile 在 `data/profile/`。
+工作目录的结构：语料在 `linux-6.6/`，与另一个实践共用；本实践的文件都在 `pgo/` 下，cargo 构建缓存在 `pgo/target/`，可执行文件在 `pgo/bin/`，profile 在 `pgo/data/profile/`。
 
 ## 4. 负载设计
 
@@ -87,7 +80,7 @@ RIPGREP_SRC=/path/to/ripgrep bash pgo/practice/run.sh
 
 **语料**：Linux 6.6 源码，81,703 个文件，1.5 GB。`corpus.sh` 下载后会校验 sha256。
 
-**训练负载**（[`common/train.sh`](common/train.sh)，用于采集 profile）：9 条搜索，覆盖 ripgrep 的常见用法。
+**训练负载**（[`common/train.sh`](../common/train.sh)，用于采集 profile）：9 条搜索，覆盖 ripgrep 的常见用法。
 
 | 命令 | 覆盖的用法 |
 |:---|:---|
@@ -101,7 +94,7 @@ RIPGREP_SRC=/path/to/ripgrep bash pgo/practice/run.sh
 | `rg -F 'struct device *dev'` | 固定字符串 |
 | `rg --files` | 只遍历目录 |
 
-**评测负载**（[`common/bench.sh`](common/bench.sh)，用于对比性能）：7 条搜索，取自 ripgrep 作者的基准集，**与训练负载不重复**，用来检验优化能否推广到没见过的输入。
+**评测负载**（[`common/bench.sh`](../common/bench.sh)，用于对比性能）：7 条搜索，取自 ripgrep 作者的基准集，**与训练负载不重复**，用来检验优化能否推广到没见过的输入。
 
 | 用例 | 命令 |
 |:---|:---|
@@ -115,7 +108,7 @@ RIPGREP_SRC=/path/to/ripgrep bash pgo/practice/run.sh
 
 ## 5. 分步说明
 
-以下列出每个脚本的核心命令、本文环境下的实际输出及其含义。`$BIN`、`$PGO_DIR` 分别指 `$WORK_DIR/bin`、`$WORK_DIR/data/profile`。
+以下列出每个脚本的核心命令、本文环境下的实际输出及其含义。`$BIN`、`$PGO_DIR` 分别指 `$WORK_DIR/pgo/bin`、`$WORK_DIR/pgo/data/profile`。
 
 ### 00：检查环境
 
@@ -191,7 +184,7 @@ RUSTFLAGS="-Cprofile-use=$PGO_DIR/merged.profdata -Cllvm-args=-pgo-warn-missing-
   cargo build --release --target $TARGET                                       # → rg-pgo
 ```
 
-脚本把构建日志写入 `$WORK_DIR/data/optimize.log`，并统计 `no profile data available` 告警的条数。
+脚本把构建日志写入 `$WORK_DIR/pgo/data/optimize.log`，并统计 `no profile data available` 告警的条数。
 
 **输出**：
 
@@ -205,7 +198,7 @@ RUSTFLAGS="-Cprofile-use=$PGO_DIR/merged.profdata -Cllvm-args=-pgo-warn-missing-
 
 ### 05：评测
 
-[`05-bench.sh`](practice/05-bench.sh) 调用 [`common/bench.sh`](common/bench.sh)，对每个评测用例依次：
+[`05-bench.sh`](practice/05-bench.sh) 调用 [`common/bench.sh`](../common/bench.sh)，对每个评测用例依次：
 
 1. **校验正确性**：两个版本的输出排序后计算 sha256，必须完全一致，否则报错退出。本文 7 个用例全部通过。
 2. **测墙钟时间**：`hyperfine --warmup 3 --runs 50`。

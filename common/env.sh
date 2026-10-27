@@ -1,21 +1,27 @@
 # 公共变量与函数。由其他脚本 source，不单独执行。
 set -euo pipefail
 
-# 本技术目录（pgo/ 或 bolt/），可以单独拿出去使用
+# 仓库根目录与 ripgrep 源码
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# ripgrep 源码：默认为与本目录同级的 ripgrep/；单独使用本目录时，用 RIPGREP_SRC 指定
-SRC="${RIPGREP_SRC:-$(dirname "$ROOT")/ripgrep}"
+SRC="$ROOT/ripgrep"
 
-# 构建产物、profile、语料的存放位置。默认为本目录下的 work/（已在 .gitignore 中忽略）。
-# 本目录位于 WSL 的 Windows 盘（/mnt/*）时，文件共享的 I/O 开销会掩盖优化效果，
-# 改用 Linux 文件系统中的 ~/rust_optimize_work/<本目录名>。也可用 WORK_DIR 直接指定。
+# 当前实践：pgo 或 bolt，由各实践的 lib.sh 设置并导出
+TECH="${TECH:?请通过 pgo/practice 或 bolt/practice 下的脚本运行}"
+TECH_DIR="$ROOT/$TECH"
+
+# 工作目录：存放语料、构建产物、profile。默认为仓库根目录下的 work/（已在 .gitignore 中忽略）。
+# 仓库位于 WSL 的 Windows 盘（/mnt/*）时，文件共享的 I/O 开销会掩盖优化效果，
+# 改用 Linux 文件系统中的 ~/rust_optimize_work。也可用 WORK_DIR 直接指定。
 if [ -z "${WORK_DIR:-}" ]; then
     case "$ROOT" in
-        /mnt/*) WORK_DIR="$HOME/rust_optimize_work/$(basename "$ROOT")" ;;
+        /mnt/*) WORK_DIR="$HOME/rust_optimize_work" ;;
         *)      WORK_DIR="$ROOT/work" ;;
     esac
 fi
+export TECH WORK_DIR
+# 语料两个实践共用；构建缓存和产物按实践分开存放
 CORPUS="${CORPUS:-$WORK_DIR/linux-6.6}"
+TECH_WORK="$WORK_DIR/$TECH"
 
 # 目标平台默认取 rustc 的宿主平台。显式传给 cargo 后，RUSTFLAGS 只作用于目标程序，
 # 不作用于 build script 和过程宏。
@@ -33,7 +39,7 @@ if [ -z "${LLVM_BIN:-}" ] && ! command -v llvm-bolt > /dev/null; then
 fi
 [ -n "${LLVM_BIN:-}" ] && export PATH="$LLVM_BIN:$PATH"
 
-mkdir -p "$WORK_DIR"
+mkdir -p "$TECH_WORK"
 
 # 前置产物不存在时，提示应先运行哪个脚本
 # 用法：need <文件> <产生它的脚本>
@@ -48,6 +54,6 @@ build() {
     RUSTFLAGS="$flags" cargo build --release --quiet \
         --manifest-path "$SRC/Cargo.toml" \
         --target "$TARGET" \
-        --target-dir "$WORK_DIR/target/$name"
-    cp "$WORK_DIR/target/$name/$TARGET/release/rg" "$BIN/rg-$name"
+        --target-dir "$TECH_WORK/target/$name"
+    cp "$TECH_WORK/target/$name/$TARGET/release/rg" "$BIN/rg-$name"
 }
