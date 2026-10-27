@@ -1,23 +1,28 @@
 #!/usr/bin/env bash
-# 评测：校验各版本输出一致 → hyperfine 测墙钟时间 → perf stat 测用户态硬件计数器。
-# 模式取自 ripgrep 作者的 benchsuite（linux_* 系列），与 train.sh 的训练模式不同。
+# 评测：对 7 个评测用例，先校验各版本输出一致，再用 hyperfine 测墙钟时间，
+# 用 perf stat 测用户态硬件计数器，结果汇总为 Markdown 表格。
+# 评测负载取自 ripgrep 作者的基准集（linux_* 系列），与训练负载不重复。
 # 用法：bench.sh <结果文件.md> <rg-基线> <rg-对比1> ...
-source "$(dirname "$0")/env.sh"
+set -euo pipefail
+cd "$(dirname "$0")"
+WORK=$(realpath -m "${WORK_DIR:-work}")
+CORPUS="$WORK/linux-6.6"
 OUT="$1"; shift
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 EVENTS="cycles:u,instructions:u,L1-icache-load-misses:u,iTLB-load-misses:u"
 
 # 每个用例：名称 + rg 参数（模式中无空格，可按空格拆分）
 CASES=(
-    "literal          PM_RESUME"
-    "literal_casei    -i PM_RESUME"
-    "word             -w PM_RESUME"
-    "unicode_word     \\wAh"
+    "literal           PM_RESUME"
+    "literal_casei     -i PM_RESUME"
+    "word              -w PM_RESUME"
+    "unicode_word      \\wAh"
     "re_literal_suffix [A-Z]+_RESUME"
-    "alternates       ERR_SYS|PME_TURN_OFF|LINK_REQ_RST|CFG_BME_EVT"
-    "no_literal       \\w{5}\\s+\\w{5}\\s+\\w{5}\\s+\\w{5}\\s+\\w{5}"
+    "alternates        ERR_SYS|PME_TURN_OFF|LINK_REQ_RST|CFG_BME_EVT"
+    "no_literal        \\w{5}\\s+\\w{5}\\s+\\w{5}\\s+\\w{5}\\s+\\w{5}"
 )
 
+mkdir -p "$(dirname "$OUT")"
 {
     echo "# 评测结果"
     echo
@@ -33,14 +38,14 @@ CASES=(
 for c in "${CASES[@]}"; do
     read -r name argv_str <<< "$c"
     read -r -a argv <<< "$argv_str"
-    echo "==> $name"
+    echo "  $name"
 
     # 1. 正确性：各版本输出（排序后）必须一致
     ref=""
     for rg in "$@"; do
         sum=$("$rg" "${argv[@]}" "$CORPUS" | sort | sha256sum)
         ref="${ref:-$sum}"
-        [ "$sum" = "$ref" ] || { echo "输出不一致：$rg ($name)"; exit 1; }
+        [ "$sum" = "$ref" ] || { echo "输出不一致：$rg ($name)" >&2; exit 1; }
     done
 
     # 2. 墙钟时间
@@ -55,7 +60,7 @@ for c in "${CASES[@]}"; do
         awk -F, -v b="$(basename "$rg")" 'NF>3 && $1 ~ /^[0-9]/ {print b","$3","$1}' "$TMP/one.csv" >> "$TMP/perf.csv"
     done
 
-    # 4. 汇总成一张表
+    # 4. 汇总为一张表：第一行为基线，其余各行附相对基线的变化
     {
         echo
         echo "## $name：\`rg ${argv[*]}\`"
@@ -88,4 +93,4 @@ for c in "${CASES[@]}"; do
             }' "$TMP/time.csv" "$TMP/perf.csv"
     } >> "$OUT"
 done
-echo "结果写入 $OUT"
+echo "  结果写入 $OUT"

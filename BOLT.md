@@ -1,6 +1,6 @@
 # Rust 程序的 BOLT 优化
 
-> 本文介绍 BOLT 的原理和通用操作步骤，适用于任意 Rust 程序。以 ripgrep 为例的应用示例（含复现脚本与实测数据）见 [experiments/bolt/PRACTICE.md](experiments/bolt/PRACTICE.md)。
+> 本文介绍 BOLT 的原理和通用操作步骤，适用于任意 Rust 程序。以 ripgrep 为例的应用示例（含复现脚本与实测数据）见 [examples/bolt.md](examples/bolt.md)。
 
 ## 1. 介绍
 
@@ -255,7 +255,7 @@ cargo-pgo 可替代第 3 节的步骤 1–3，两种方式任选其一。得到�
 
 项目地址：<https://crates.io/crates/cargo-pgo>
 
-cargo-pgo 将步骤 1–3 封装为几条命令，自动添加重定位参数并管理 profile 目录。它通过 `PATH` 查找 `llvm-bolt` 和 `merge-fdata`，`cargo pgo info` 可用于检查环境。
+cargo-pgo 将步骤 1–3 封装为几条命令，自动添加重定位参数并管理 profile 目录。它通过 `PATH` 查找 `llvm-bolt` 和 `merge-fdata`，`cargo pgo info` 可用于检查环境。完整示例见 [examples/cargo-pgo.sh](examples/cargo-pgo.sh)。
 
 ```bash
 cargo install cargo-pgo
