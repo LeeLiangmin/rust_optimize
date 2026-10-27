@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 步骤 05：评测所有已生成的版本，结果写入 bolt/practice/results.md。
+# 步骤 05：评测所有已生成的版本，结果写入 experiments/bolt/practice/results.md。
 source "$(dirname "$0")/lib.sh"
 need "$BIN/rg-base" 01-build.sh
 

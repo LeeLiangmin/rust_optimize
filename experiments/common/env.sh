@@ -1,15 +1,15 @@
 # 公共变量与函数。由其他脚本 source，不单独执行。
 set -euo pipefail
 
-# 仓库根目录与 ripgrep 源码
+# 实验目录（experiments/）与实验对象 ripgrep 的源码
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="$ROOT/ripgrep"
+SRC="$ROOT/subjects/ripgrep"
 
 # 当前实践：pgo 或 bolt，由各实践的 lib.sh 设置并导出
-TECH="${TECH:?请通过 pgo/practice 或 bolt/practice 下的脚本运行}"
+TECH="${TECH:?请通过 experiments/pgo/practice 或 experiments/bolt/practice 下的脚本运行}"
 TECH_DIR="$ROOT/$TECH"
 
-# 工作目录：存放语料、构建产物、profile。默认为仓库根目录下的 work/（已在 .gitignore 中忽略）。
+# 工作目录：存放语料、构建产物、profile。默认为 experiments/work/（已在 .gitignore 中忽略）。
 # 仓库位于 WSL 的 Windows 盘（/mnt/*）时，文件共享的 I/O 开销会掩盖优化效果，
 # 改用 Linux 文件系统中的 ~/rust_optimize_work。也可用 WORK_DIR 直接指定。
 if [ -z "${WORK_DIR:-}" ]; then

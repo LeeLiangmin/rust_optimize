@@ -1,4 +1,4 @@
-# 构建产物、profile、语料默认放在仓库根目录的 work/，不提交。
+# 构建产物、profile、语料默认放在 experiments/work/，不提交。
 work/
 # 以下规则防止在其他位置误生成的构建产物和 profile 被提交。
 target/
