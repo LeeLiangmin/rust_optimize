@@ -1,6 +1,6 @@
 # Rust 程序的 PGO 优化
 
-> 本文介绍 PGO 的原理和通用操作步骤，适用于任意 Rust 程序。以 ripgrep 为例的完整实践、复现脚本与实测数据见 [experiments/pgo/PRACTICE.md](experiments/pgo/PRACTICE.md)。
+> 本文介绍 PGO 的原理和通用操作步骤，适用于任意 Rust 程序。以 ripgrep 为例的应用示例（含复现脚本与实测数据）见 [experiments/pgo/PRACTICE.md](experiments/pgo/PRACTICE.md)。
 
 ## 1. 介绍
 

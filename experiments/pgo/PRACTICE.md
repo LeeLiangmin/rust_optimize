@@ -1,14 +1,14 @@
-# PGO 实践：优化 ripgrep
+# PGO 应用示例：ripgrep
 
-本文按 [PGO 通用文档](../../PGO.md) 的步骤，对 ripgrep 14.1.1 进行 PGO 优化并评测效果。各步骤均有对应脚本，可在克隆仓库后直接复现。
+本文以 ripgrep 14.1.1 为例，按 [PGO 通用文档](../../PGO.md) 的步骤演示 PGO 的完整应用过程，并测量优化效果。ripgrep 仅作为示例程序，相同的流程适用于其他 Rust 程序。各步骤均有对应脚本，可在克隆仓库后直接复现。
 
-## 1. 实验概述
+## 1. 示例概述
 
 ### 1.1 目的
 
-评估 PGO 对一个实际 Rust 程序的性能影响，并通过硬件计数器分析其作用方式。
+演示在一个实际的 Rust 程序上应用 PGO 的完整流程，并通过测量验证优化是否按原理生效。
 
-### 1.2 实验对象
+### 1.2 示例程序
 
 [ripgrep](https://github.com/BurntSushi/ripgrep)（命令 `rg`）是用 Rust 编写的命令行文本搜索工具，功能与 `grep` 类似：在目录下的文件中查找与给定模式匹配的行。选用 ripgrep 的原因：它是广泛使用的实际程序，代码规模适中（约 5 万行 Rust 代码，含注释和测试），且作者公开了基准测试，可供参照。所用版本为 14.1.1，源码未做修改，位于仓库的 [`experiments/subjects/ripgrep/`](../subjects/ripgrep)。
 
@@ -78,11 +78,11 @@ bash experiments/pgo/practice/run.sh
 | `WORK_DIR` | `experiments/work/`；仓库位于 WSL 的 `/mnt/*` 下时为 `~/rust_optimize_work` | 语料、构建产物、profile 的存放位置，已在 `.gitignore` 中忽略。WSL 下不应放在 `/mnt/c` 等 Windows 盘上，否则文件共享的 I/O 开销会掩盖优化效果 |
 | `KERNEL_MIRROR` | `https://cdn.kernel.org/pub/linux/kernel` | 语料下载源。国内可使用 `https://mirrors.tuna.tsinghua.edu.cn/kernel` |
 
-工作目录结构：语料位于 `linux-6.6/`，与 BOLT 实践共用；本实践的文件位于 `pgo/` 下，其中构建缓存在 `pgo/target/`，可执行文件在 `pgo/bin/`，profile 在 `pgo/data/profile/`。
+工作目录结构：语料位于 `linux-6.6/`，与 BOLT 示例共用；本示例的文件位于 `pgo/` 下，其中构建缓存在 `pgo/target/`，可执行文件在 `pgo/bin/`，profile 在 `pgo/data/profile/`。
 
 ## 4. 负载设计
 
-profile 的质量取决于负载。PGO 与 BOLT 两个实践使用相同的语料和负载。
+profile 的质量取决于负载。PGO 与 BOLT 两个示例使用相同的语料和负载。
 
 ### 4.1 语料
 
@@ -272,6 +272,6 @@ INFO  cargo_pgo::pgo::optimize] Merged PGO profile(s) to .../merged-<hash>.profd
 1. 作用方式与原理一致。7 个用例中有 6 个指令数减少 4.2%–7.3%、cycles 减少约 10%–12%，说明内联和分支布局优化减少了需要执行的指令。L1 i-cache 未命中稳定减少约三分之一，说明热代码分布更集中。
 2. no_literal 几乎没有提升。该用例的耗时主要集中在正则引擎的一个小循环内，热代码本身已经很紧凑，PGO 的调整空间很小。其 i-cache 未命中同样减少了 33%，但取指不是瓶颈，cycles 仅减少 1.5%。
 3. 墙钟时间没有稳定提升。以 literal 为例，`rg-base` 的 CPU 时间中 User 为 820 ms、System 为 1249 ms，约 60% 花在内核态（读文件、遍历目录）。PGO 只作用于用户态部分，其收益在总耗时中被稀释；同时 WSL2 下计时波动较大，最终没有观察到稳定差异。
-4. 单次结果存在波动。BOLT 实践中也包含按相同流程构建的 PGO 版本。两轮的 cycles 变化大多相差 2 个百分点以内，alternates 相差较大（本轮 −10.3%，另一轮 −6.3%）。针对个别用例的结论应以多轮运行结果为准。
+4. 单次结果存在波动。BOLT 示例中也包含按相同流程构建的 PGO 版本。两轮的 cycles 变化大多相差 2 个百分点以内，alternates 相差较大（本轮 −10.3%，另一轮 −6.3%）。针对个别用例的结论应以多轮运行结果为准。
 
 结论：PGO 对 ripgrep 用户态代码的优化效果明显且稳定（cycles 约 −10%）；但在该负载下 ripgrep 以 I/O 为主，端到端收益有限。是否采用 PGO，应以目标程序在实际负载上的测量结果为准。

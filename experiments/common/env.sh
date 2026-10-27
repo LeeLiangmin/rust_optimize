@@ -1,11 +1,11 @@
 # 公共变量与函数。由其他脚本 source，不单独执行。
 set -euo pipefail
 
-# 实验目录（experiments/）与实验对象 ripgrep 的源码
+# 示例目录（experiments/）与示例程序 ripgrep 的源码
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$ROOT/subjects/ripgrep"
 
-# 当前实践：pgo 或 bolt，由各实践的 lib.sh 设置并导出
+# 当前示例：pgo 或 bolt，由各示例的 lib.sh 设置并导出
 TECH="${TECH:?请通过 experiments/pgo/practice 或 experiments/bolt/practice 下的脚本运行}"
 TECH_DIR="$ROOT/$TECH"
 
@@ -19,7 +19,7 @@ if [ -z "${WORK_DIR:-}" ]; then
     esac
 fi
 export TECH WORK_DIR
-# 语料两个实践共用；构建缓存和产物按实践分开存放
+# 语料两个示例共用；构建缓存和产物按示例分开存放
 CORPUS="${CORPUS:-$WORK_DIR/linux-6.6}"
 TECH_WORK="$WORK_DIR/$TECH"
 
@@ -47,7 +47,7 @@ need() {
     [ -e "$1" ] || { echo "缺少 $1，请先运行 $2" >&2; exit 1; }
 }
 
-# 用法：build <名称> <RUSTFLAGS>，产物复制为 $BIN/rg-<名称>（BIN 由各实践的 lib.sh 设置）
+# 用法：build <名称> <RUSTFLAGS>，产物复制为 $BIN/rg-<名称>（BIN 由各示例的 lib.sh 设置）
 build() {
     local name="$1" flags="$2"
     echo "==> 构建 rg-$name  RUSTFLAGS='$flags'"

@@ -1,4 +1,4 @@
-# BOLT 实践脚本的公共部分。由同目录的脚本 source，不单独执行。
+# BOLT 示例脚本的公共部分。由同目录的脚本 source，不单独执行。
 export TECH=bolt
 source "$(dirname "${BASH_SOURCE[0]}")/../../common/env.sh"
 

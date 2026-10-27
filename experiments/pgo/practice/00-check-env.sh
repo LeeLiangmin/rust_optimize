@@ -15,7 +15,7 @@ check() {
 echo "==> 平台"
 echo "  $(uname -s) $(uname -m)"
 # PGO 本身不限平台；评测脚本依赖 Linux 的 perf
-[ "$(uname -s)" = Linux ] || { echo "  本实践的评测依赖 Linux perf"; fail=1; }
+[ "$(uname -s)" = Linux ] || { echo "  本示例的评测依赖 Linux perf"; fail=1; }
 
 echo "==> ripgrep 源码"
 if [ -f "$SRC/Cargo.toml" ]; then

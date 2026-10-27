@@ -1,18 +1,18 @@
-# BOLT 实践：优化 ripgrep
+# BOLT 应用示例：ripgrep
 
-本文按 [BOLT 通用文档](../../BOLT.md) 的步骤，对 ripgrep 14.1.1 进行 BOLT 优化，分别采用插桩和采样两种方式采集 profile，并与 PGO 叠加，最后评测各版本的效果。各步骤均有对应脚本，可在克隆仓库后直接复现。
+本文以 ripgrep 14.1.1 为例，按 [BOLT 通用文档](../../BOLT.md) 的步骤演示 BOLT 的完整应用过程：分别采用插桩和采样两种方式采集 profile，并与 PGO 叠加，最后测量各版本的效果。ripgrep 仅作为示例程序，相同的流程适用于其他 Rust 程序。各步骤均有对应脚本，可在克隆仓库后直接复现。
 
-## 1. 实验概述
+## 1. 示例概述
 
 ### 1.1 目的
 
-本实践评估以下三项：
+本示例演示以下三项内容，并通过测量验证优化是否按原理生效：
 
-1. BOLT 对一个实际 Rust 程序的性能影响及其作用方式；
-2. 插桩与采样两种 profile 采集方式的效果差异；
-3. 在 PGO 基础上叠加 BOLT 的效果。
+1. 在一个实际的 Rust 程序上应用 BOLT 的完整流程；
+2. 插桩与采样两种 profile 采集方式的用法与效果对比；
+3. 在 PGO 基础上叠加 BOLT 的方法与效果。
 
-### 1.2 实验对象
+### 1.2 示例程序
 
 [ripgrep](https://github.com/BurntSushi/ripgrep)（命令 `rg`）是用 Rust 编写的命令行文本搜索工具，功能与 `grep` 类似：在目录下的文件中查找与给定模式匹配的行。选用 ripgrep 的原因：它是广泛使用的实际程序，代码规模适中（约 5 万行 Rust 代码，含注释和测试），且作者公开了基准测试，可供参照。所用版本为 14.1.1，源码未做修改，位于仓库的 [`experiments/subjects/ripgrep/`](../subjects/ripgrep)。
 
@@ -22,7 +22,7 @@
 2. 采集 profile：在语料上执行 9 条典型搜索（训练负载），分别以插桩和采样两种方式采集。
 3. 构建五个版本：
 
-   | 版本 | 构建方式 | 评估项 |
+   | 版本 | 构建方式 | 对应内容 |
    |:---|:---|:---|
    | `rg-base` | 普通 release 构建 | 对照组 |
    | `rg-bolt` | BOLT，插桩方式采集 profile | 第 1 项 |
@@ -97,11 +97,11 @@ bash experiments/bolt/practice/run.sh
 | `LLVM_BIN` | 自动探测 | BOLT 工具所在目录。默认先查找 `PATH`，再查找 `/usr/lib/llvm-*/bin` 中版本最高者 |
 | `KERNEL_MIRROR` | `https://cdn.kernel.org/pub/linux/kernel` | 语料下载源。国内可使用 `https://mirrors.tuna.tsinghua.edu.cn/kernel` |
 
-工作目录结构：语料位于 `linux-6.6/`，与 PGO 实践共用；本实践的文件位于 `bolt/` 下，其中构建缓存在 `bolt/target/`，可执行文件在 `bolt/bin/`，profile 在 `bolt/data/`。
+工作目录结构：语料位于 `linux-6.6/`，与 PGO 示例共用；本示例的文件位于 `bolt/` 下，其中构建缓存在 `bolt/target/`，可执行文件在 `bolt/bin/`，profile 在 `bolt/data/`。
 
 ## 4. 负载设计
 
-profile 的质量取决于负载。PGO 与 BOLT 两个实践使用相同的语料和负载。
+profile 的质量取决于负载。PGO 与 BOLT 两个示例使用相同的语料和负载。
 
 ### 4.1 语料
 
@@ -337,6 +337,6 @@ INFO  cargo_pgo::bolt::optimize] Binary rg successfully optimized with BOLT.
 4. 采样与插桩效果接近。采样版的 i-cache 未命中降幅与插桩版相当，cycles 降幅互有高低，且采集更快（页缓存命中时，采样 5 秒，插桩约 20 秒）。例外是 no_literal：采样版的指令数增加 2.9%，在三次独立运行中均出现。可能的原因是采样遗漏了部分热路径，这部分代码被当作冷代码拆分出去，执行时增加了跳转；本文未进一步验证。
 5. no_literal 几乎没有提升。该用例的耗时主要集中在正则引擎的一个小循环内，热代码本身已经很紧凑，布局优化的空间很小。
 6. 墙钟时间没有稳定提升。以 literal 为例，`rg-base` 的 CPU 时间中 User 为 820 ms、System 为 1249 ms，约 60% 花在内核态（读文件、遍历目录）。BOLT 只作用于用户态部分，其收益在总耗时中被稀释；同时 WSL2 下计时波动较大，最终没有观察到稳定差异。
-7. 单次结果存在波动。PGO 实践（`experiments/pgo/`）按相同流程构建了 PGO 版本，与本文 PGO 列相比，两轮的 cycles 变化大多相差 2 个百分点以内，alternates 相差较大（本轮 −6.3%，PGO 实践中 −10.3%）。针对个别用例的结论应以多轮运行结果为准。
+7. 单次结果存在波动。PGO 示例（`experiments/pgo/`）按相同流程构建了 PGO 版本，与本文 PGO 列相比，两轮的 cycles 变化大多相差 2 个百分点以内，alternates 相差较大（本轮 −6.3%，PGO 示例中 −10.3%）。针对个别用例的结论应以多轮运行结果为准。
 
 结论：对 ripgrep 这类以 I/O 为主、热点集中的程序，BOLT 在微架构层面的效果明显，但端到端收益有限。是否采用 BOLT，应以目标程序在实际负载上的测量结果为准。
