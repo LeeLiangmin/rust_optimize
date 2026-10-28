@@ -1,6 +1,6 @@
 # Rust 程序的 PGO 与 BOLT 优化
 
-PGO 和 BOLT 依据程序运行时的 profile 进行优化，无需修改源码。PGO 在编译期调整内联、分支布局等编译决策；BOLT 在链接之后重排机器码。两者可以单独使用，也可以叠加使用，叠加时先 PGO、后 BOLT。
+PGO 和 BOLT 依据程序运行时的 profile 进行优化，无需修改源码。PGO 在编译期调整内联、分支布局等编译决策；BOLT 在链接之后重排机器码。两者可以单独使用，也可以叠加使用。
 
 ## Rust 的支持情况
 
@@ -14,20 +14,24 @@ rustc 内置 PGO 支持；BOLT 不属于 Rust 工具链，作用于 rustc 生成
 | 平台 | rustc 支持的主流平台（Linux、macOS、Windows） | Linux ELF（x86_64、AArch64）；macOS 仅有初步的 Mach-O 支持；Windows 不可用 |
 | 主要限制 | rustup 分发的标准库为预编译，不参与优化 | 默认丢弃调试信息 |
 
-社区工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将两项技术的构建、采集和合并封装为 Cargo 子命令。
+此外，社区提供了工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将两项技术的构建、采集和合并封装为 Cargo 子命令。
 
-## 文档
+## 文档与示例
+
+针对这两项技术，我们提供技术文档和配套示例。技术文档说明原理和在 Rust 程序上的操作步骤，内容通用，不依赖具体项目；示例以 ripgrep 为实验对象，按文档的步骤完成优化，给出每一步的命令、实际输出和评测数据。可先阅读文档了解流程，再通过示例查看各步骤在实际程序上的运行结果。
+
+### 文档
+
+每项技术一篇文档，并对应一个示例。BOLT.md 引用了 PGO.md 中的部分内容，建议先阅读 PGO.md。
 
 | 技术 | 文档 | 内容 | 示例 |
 |:---|:---|:---|:---|
 | PGO | [PGO.md](PGO.md) | 概述、原理、操作步骤、cargo-pgo 用法 | [examples/pgo/](examples/pgo/README.md) |
 | BOLT | [BOLT.md](BOLT.md) | 概述、原理、操作步骤、与 PGO 叠加、cargo-pgo 用法 | [examples/bolt/](examples/bolt/README.md) |
 
-BOLT.md 引用了 PGO.md 中的部分内容，建议先阅读 PGO.md。
+### 示例
 
-## 示例
-
-`examples/` 以 ripgrep 14.1.1 为实验对象，按上述文档的步骤完成三个示例。每个示例目录包含说明（README.md）和脚本（run.sh），脚本的内容即文档中的操作步骤，运行时打印各步骤的标题和产出。语料、负载、评测方法和运行环境见 [examples/README.md](examples/README.md)。
+示例位于 `examples/`，以 ripgrep 14.1.1（源码未修改）为实验对象，除上述两项技术各一个示例外，另有一个 cargo-pgo 示例。每个示例目录包含说明文档（README.md）和脚本（run.sh）：脚本按文档的操作步骤执行，运行时打印各步骤的标题和产出；说明文档列出每一步的命令和实际输出，PGO 和 BOLT 示例另附评测结果及分析。语料、负载、评测方法和运行环境见 [examples/README.md](examples/README.md)。
 
 | 示例 | 内容 | 测试环境下的耗时 |
 |:---|:---|---:|
