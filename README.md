@@ -4,42 +4,33 @@ PGO 和 BOLT 依据程序运行时的 profile 进行优化，无需修改源码�
 
 ## Rust 的支持情况
 
-rustc 内置 PGO 支持；BOLT 不属于 Rust 工具链，作用于 rustc 生成的二进制。
+rustc 自 1.37 起以稳定的编译选项 `-Cprofile-generate`、`-Cprofile-use` 支持 PGO，合并 profile 所需的 `llvm-profdata` 由 rustup 组件 `llvm-tools-preview` 提供。BOLT 不属于 Rust 工具链，需单独安装 LLVM 的 BOLT 工具，作用于 rustc 生成的 Linux ELF 二进制，构建时以 `-Clink-args=-Wl,-q` 保留重定位信息。华为毕昇编译器的 FGO 特性目前在 rustc 中没有对应的支持。此外，社区提供了工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将 PGO 和 BOLT 的构建、采集和合并封装为 Cargo 子命令。
 
-| 项目 | PGO | BOLT |
-|:---|:---|:---|
-| 支持方式 | rustc 自 1.37 起提供稳定的编译选项 `-Cprofile-generate`、`-Cprofile-use` | 单独安装 LLVM 的 BOLT 工具（LLVM 14 起提供）；构建时以 `-Clink-args=-Wl,-q` 保留重定位信息 |
-| 所需工具 | `llvm-profdata`，由 rustup 组件 `llvm-tools-preview` 提供 | `llvm-bolt`、`merge-fdata`；采样方式另需 `perf`、`perf2bolt` |
-| profile 采集 | 插桩；采样式 PGO（`-Zprofile-sample-use`）仅在 nightly 中可用，稳定化变更已合并，里程碑为 1.100 | 插桩或 `perf` 采样 |
-| 平台 | rustc 支持的主流平台（Linux、macOS、Windows） | Linux ELF（x86_64、AArch64）；macOS 仅有初步的 Mach-O 支持；Windows 不可用 |
-| 主要限制 | rustup 分发的标准库为预编译，不参与优化 | 默认丢弃调试信息 |
-
-此外，社区提供了工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将两项技术的构建、采集和合并封装为 Cargo 子命令。
+工具、profile 采集方式、平台和限制的完整对比见 [GUIDE.md 第 1 章](GUIDE.md#1-概述)。
 
 ## 文档与示例
 
-针对这两项技术，我们提供技术文档和配套示例。技术文档说明原理和在 Rust 程序上的操作步骤，内容通用，不依赖具体项目；示例以 ripgrep 为实验对象，按文档的步骤完成优化，给出每一步的命令、实际输出和评测数据。可先阅读文档了解流程，再通过示例查看各步骤在实际程序上的运行结果。
+针对这些技术，我们提供一本手册 [GUIDE.md](GUIDE.md) 和配套示例。手册说明各项技术的原理、使用方法和注意事项，内容通用，不依赖具体项目；最后一章以 ripgrep 为实践案例，按手册的步骤完成优化，给出每一步的命令、实际输出和评测数据。可先阅读技术章节了解流程，再通过实践案例查看各步骤在实际程序上的运行结果。
 
-### 文档
+| 章 | 内容 |
+|:---|:---|
+| [1 概述](GUIDE.md#1-概述) | 三项技术的关系，Rust 的支持情况 |
+| [2 PGO](GUIDE.md#2-pgo) | 简介、优化原理、使用方法、注意事项 |
+| [3 FGO](GUIDE.md#3-fgo) | 毕昇编译器的 FGO 特性，与 PGO 的差别，Rust 中的现状 |
+| [4 BOLT](GUIDE.md#4-bolt) | 简介、优化原理、输入二进制的要求、验证范围、使用方法、注意事项 |
+| [5 PGO 与 BOLT 叠加](GUIDE.md#5-pgo-与-bolt-叠加) | 叠加的顺序和步骤 |
+| [6 使用 cargo-pgo](GUIDE.md#6-使用-cargo-pgo) | 用 cargo-pgo 完成 PGO、BOLT 和两者叠加 |
+| [7 实践案例：ripgrep](GUIDE.md#7-实践案例ripgrep) | 案例说明、负载与评测方法、各案例的操作记录、优化效果 |
 
-每项技术一篇文档，并对应一个示例。BOLT.md 引用了 PGO.md 中的部分内容，建议先阅读 PGO.md。
+实践案例的脚本位于 `examples/`，以 ripgrep 14.1.1（源码未修改）为实验对象。脚本按手册的步骤执行，运行时打印各步骤的标题和产出：
 
-| 技术 | 文档 | 内容 | 示例 |
-|:---|:---|:---|:---|
-| PGO | [PGO.md](PGO.md) | 概述、原理、操作步骤、cargo-pgo 用法 | [examples/pgo/](examples/pgo/README.md) |
-| BOLT | [BOLT.md](BOLT.md) | 概述、原理、操作步骤、与 PGO 叠加、cargo-pgo 用法 | [examples/bolt/](examples/bolt/README.md) |
-
-### 示例
-
-示例位于 `examples/`，以 ripgrep 14.1.1（源码未修改）为实验对象，除上述两项技术各一个示例外，另有一个 cargo-pgo 示例。每个示例目录包含说明文档（README.md）和脚本（run.sh）：脚本按文档的操作步骤执行，运行时打印各步骤的标题和产出；说明文档列出每一步的命令和实际输出，PGO 和 BOLT 示例另附评测结果及分析。语料、负载、评测方法和运行环境见 [examples/README.md](examples/README.md)。
-
-| 示例 | 内容 | 测试环境下的耗时 |
+| 脚本 | 内容 | 测试环境下的耗时 |
 |:---|:---|---:|
-| [PGO](examples/pgo/README.md) | 构建普通版与 PGO 版，并评测 | 约 6 分钟（含语料下载） |
-| [BOLT](examples/bolt/README.md) | 构建 BOLT 版（插桩、采样）与 PGO + BOLT 版，并评测 | 约 9.5 分钟 |
-| [cargo-pgo](examples/cargo-pgo/README.md) | 用 cargo-pgo 完成 PGO 与 PGO + BOLT，并校验输出 | 约 6 分钟 |
+| [`examples/pgo/run.sh`](examples/pgo/run.sh) | 构建普通版与 PGO 版，并评测 | 约 6 分钟（含语料下载） |
+| [`examples/bolt/run.sh`](examples/bolt/run.sh) | 构建 BOLT 版（插桩、采样）与 PGO + BOLT 版，并评测 | 约 9.5 分钟 |
+| [`examples/cargo-pgo/run.sh`](examples/cargo-pgo/run.sh) | 用 cargo-pgo 完成 PGO 与 PGO + BOLT，并校验输出 | 约 6 分钟 |
 
-BOLT 示例和 cargo-pgo 示例使用 PGO 示例的产物，需按以下顺序运行：
+BOLT 和 cargo-pgo 的脚本使用 PGO 脚本的产物，需按以下顺序运行。运行环境要求见 [GUIDE.md 7.1 节](GUIDE.md#71-案例说明)。
 
 ```bash
 bash examples/pgo/run.sh
@@ -51,14 +42,13 @@ bash examples/cargo-pgo/run.sh
 
 ```
 ├── README.md
-├── PGO.md                 PGO 文档
-├── BOLT.md                BOLT 文档
-├── assets/                文档中的流程图
+├── GUIDE.md               手册：PGO、FGO、BOLT、cargo-pgo、实践案例
+├── assets/                手册中的流程图
 └── examples/
-    ├── README.md          示例设计：实验对象、语料、负载、评测方法、运行环境
-    ├── pgo/               PGO 示例：README.md、run.sh、results.md
-    ├── bolt/              BOLT 示例：README.md、run.sh、results.md
-    ├── cargo-pgo/         cargo-pgo 示例：README.md、run.sh
+    ├── README.md          案例目录说明
+    ├── pgo/               PGO 案例：README.md、run.sh、results.md
+    ├── bolt/              BOLT 案例：README.md、run.sh、results.md
+    ├── cargo-pgo/         cargo-pgo 案例：README.md、run.sh
     ├── common/            共用脚本：workload.sh（语料与训练负载）、bench.sh（评测）
     ├── subjects/ripgrep/  实验对象源码
     └── work/              运行时生成，不提交

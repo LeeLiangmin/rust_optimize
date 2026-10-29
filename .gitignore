@@ -7,3 +7,6 @@ target/
 *.fdata
 perf.data*
 *.inst
+
+# 参考资料（第三方版权文档），不提交。
+*.pdf
