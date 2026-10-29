@@ -4,7 +4,7 @@ PGO 和 BOLT 依据程序运行时的 profile 进行优化，无需修改源码�
 
 ## Rust 的支持情况
 
-rustc 自 1.37 起以稳定的编译选项 `-Cprofile-generate`、`-Cprofile-use` 支持 PGO，合并 profile 所需的 `llvm-profdata` 由 rustup 组件 `llvm-tools-preview` 提供。BOLT 不属于 Rust 工具链，需单独安装 LLVM 的 BOLT 工具，作用于 rustc 生成的 Linux ELF 二进制，构建时以 `-Clink-args=-Wl,-q` 保留重定位信息。华为毕昇编译器的 FGO 特性目前在 rustc 中没有对应的支持。此外，社区提供了工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将 PGO 和 BOLT 的构建、采集和合并封装为 Cargo 子命令。
+rustc 自 1.37 起以稳定的编译选项 `-Cprofile-generate`、`-Cprofile-use` 支持 PGO，合并 profile 所需的 `llvm-profdata` 由 rustup 组件 `llvm-tools-preview` 提供。BOLT 不属于 Rust 工具链，需单独安装 LLVM 的 BOLT 工具，作用于 rustc 生成的 Linux ELF 二进制，构建时以 `-Clink-args=-Wl,-q` 保留重定位信息。FGO 目前在 rustc 中没有对应的支持。此外，社区提供了工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将 PGO 和 BOLT 的构建、采集和合并封装为 Cargo 子命令。
 
 工具、profile 采集方式、平台和限制的完整对比见 [GUIDE.md 第 1 章](GUIDE.md#1-概述)。
 
@@ -16,11 +16,11 @@ rustc 自 1.37 起以稳定的编译选项 `-Cprofile-generate`、`-Cprofile-use
 |:---|:---|
 | [1 概述](GUIDE.md#1-概述) | 三项技术的关系，Rust 的支持情况 |
 | [2 PGO](GUIDE.md#2-pgo) | 简介、优化原理、使用方法、注意事项 |
-| [3 FGO](GUIDE.md#3-fgo) | 毕昇编译器的 FGO 特性，与 PGO 的差别，Rust 中的现状 |
-| [4 BOLT](GUIDE.md#4-bolt) | 简介、优化原理、输入二进制的要求、验证范围、使用方法、注意事项 |
+| [3 FGO](GUIDE.md#3-fgo) | FGO 简介，与 PGO 的差别，毕昇编译器中的使用方法，Rust 中的现状 |
+| [4 BOLT](GUIDE.md#4-bolt) | 简介、优化原理、输入二进制的要求、使用方法、注意事项 |
 | [5 PGO 与 BOLT 叠加](GUIDE.md#5-pgo-与-bolt-叠加) | 叠加的顺序和步骤 |
 | [6 使用 cargo-pgo](GUIDE.md#6-使用-cargo-pgo) | 用 cargo-pgo 完成 PGO、BOLT 和两者叠加 |
-| [7 实践案例：ripgrep](GUIDE.md#7-实践案例ripgrep) | 案例说明、负载与评测方法、各案例的操作记录、优化效果 |
+| [7 实践案例：ripgrep](GUIDE.md#7-实践案例ripgrep) | 案例说明、负载与评测方法、PGO、BOLT 和 cargo-pgo 各案例的步骤结果、优化效果 |
 
 实践案例的脚本位于 `examples/`，以 ripgrep 14.1.1（源码未修改）为实验对象。脚本按手册的步骤执行，运行时打印各步骤的标题和产出：
 
