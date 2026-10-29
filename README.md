@@ -16,7 +16,7 @@
 
 ## 运行实践案例
 
-案例脚本位于 [`examples/`](examples/README.md)，需要 Linux、rustup 工具链、`perf`、`hyperfine`；BOLT 案例另需 18 及以上版本的 BOLT 工具，cargo-pgo 案例另需 `cargo install cargo-pgo`。完整要求见 [7.1 节](GUIDE.md#71-案例说明)。BOLT 和 cargo-pgo 案例使用 PGO 案例的产物，需按以下顺序运行：
+案例脚本位于 [`examples/`](examples/README.md)，需要 Linux、rustup 工具链、`perf`、`hyperfine`、`curl`；BOLT 案例另需 18 及以上版本的 BOLT 工具，cargo-pgo 案例另需 `cargo install cargo-pgo`。完整要求见 [7.1 节](GUIDE.md#71-案例说明)。BOLT 和 cargo-pgo 案例使用 PGO 案例的产物，需按以下顺序运行：
 
 ```bash
 bash examples/pgo/run.sh         # 约 6 分钟，含首次下载语料

@@ -19,7 +19,7 @@ PGO 与 BOLT 可以叠加使用，顺序为先 PGO、后 BOLT。
 | 技术 | 支持情况 | 所需工具 | 平台 |
 |:---|:---|:---|:---|
 | PGO | rustc 自 1.37 起提供稳定的编译选项 `-Cprofile-generate`、`-Cprofile-use` | `llvm-profdata`，由 rustup 组件 `llvm-tools-preview` 提供 | rustc 支持的主流平台 |
-| FGO | 社区 rustc 尚未支持：rustc 内置的 LLVM 来自上游，不含该特性，也没有对应的编译选项 | — | — |
+| FGO | 社区 rustc 尚未支持：FGO 为华为定制实现，上游 LLVM 不支持，rustc 内置的 LLVM 来自上游，也没有对应的编译选项 | — | — |
 | BOLT | 不属于 Rust 工具链，作用于 rustc 生成的二进制；构建时以 `-Clink-args=-Wl,-q` 保留重定位信息 | `llvm-bolt`、`merge-fdata`（LLVM 14 起提供，需单独安装）；采样方式另需 `perf`、`perf2bolt` | Linux ELF（x86_64、AArch64） |
 
 社区工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将 PGO 和 BOLT 的流程封装为 Cargo 子命令，自动处理 `--target`、profile 目录、工具路径和重定位参数；以 PGO 为例，只需执行 `cargo pgo build`、运行负载、执行 `cargo pgo optimize`（见第 6 章）。
@@ -28,7 +28,7 @@ PGO 与 BOLT 可以叠加使用，顺序为先 PGO、后 BOLT。
 
 ### 2.1 简介
 
-PGO（Profile-Guided Optimization，又称反馈优化 FDO）是一种编译期优化：先以插桩版程序运行典型负载，记录各分支、各函数的执行次数（profile），再依据 profile 重新编译，以实际执行情况代替静态启发式规则指导优化。
+PGO 又称反馈优化（FDO），是一种编译期优化：先以插桩版程序运行典型负载，记录各分支、各函数的执行次数（profile），再依据 profile 重新编译，以实际执行情况代替静态启发式规则指导优化。
 
 PGO 适用于 CPU 密集、分支多、代码量大的程序，如编译器、解释器、数据库。主要耗时在 I/O 和系统调用上的程序收益有限。PGO 只覆盖本次构建编译的 crate，以及在其中实例化、内联的标准库泛型代码。本手册只介绍插桩式 PGO。ripgrep 上的实测效果见 7.5 节。
 
@@ -64,7 +64,7 @@ LLVM 利用 profile 进行的主要优化：
 | 4. 优化构建 | 依据 profile 重新编译 | 源码 + `merged.profdata` | 优化版 `<app>` |
 | 5. 验证 | 确认行为不变并测量性能 | 普通版、优化版 `<app>` | 对比结果 |
 
-下文中，`<app>` 为程序名，`<workload>` 为代表实际使用场景的运行参数，`<triple>` 为目标平台（如 `x86_64-unknown-linux-gnu`，由 `rustc -vV` 输出中的 `host` 行获得）。
+下文中，`<app>` 为程序的可执行文件名，`<workload>` 为代表实际使用场景的运行参数，`<bench>` 为与训练负载不同的评测参数，`<triple>` 为目标平台（如 `x86_64-unknown-linux-gnu`，由 `rustc -vV` 输出中的 `host` 行获得）。命令块中在首次使用处以注释给出示例值。
 
 #### 步骤 0：准备环境
 
@@ -147,6 +147,8 @@ cargo build --release --target <triple>
 1. 正确性：使用测试集或一组固定输入，比较普通版与优化版的输出，两者应完全一致。
 2. 性能：使用与训练负载不同的输入测量，避免结果只反映训练数据上的表现。
 
+以下命令中，普通版和优化版分别复制为 `<app>-base`、`<app>-pgo`：
+
 ```bash
 # <app>：程序的可执行文件名，如 rg
 # <bench>：与训练负载不同的评测参数，如 PM_RESUME linux-6.6/
@@ -171,6 +173,8 @@ PGO 的效果主要体现为用户态指令数减少。
 FGO 是华为自研的反馈优化特性。FGO 沿用 PGO 的插桩和采集流程，区别在于优化构建之前增加一次编译：依据 profile 生成反馈信息文件 `profile.cfg`，再以 `profile.cfg` 指导优化编译。`profile.cfg` 便于审计，可在优化构建前检查编译器将依据哪些反馈信息进行优化。
 
 ### 3.2 与 PGO 的差别
+
+下表以毕昇编译器（clang）的选项对比两者的流程：
 
 | 项目 | PGO | FGO |
 |:---|:---|:---|
@@ -218,7 +222,7 @@ FGO 是华为自研的反馈优化特性。FGO 沿用 PGO 的插桩和采集流�
 
 ### 4.1 简介
 
-BOLT（Binary Optimization and Layout Tool）是 LLVM 项目中的链接后优化器：读取已链接的可执行文件，依据运行时 profile 重排其中的机器码，使热代码集中，从而减少指令缓存（i-cache）和 iTLB 未命中。BOLT 基本不改变执行的指令，只改变指令的位置，因此可以叠加在 PGO、LTO 之上。
+BOLT 是 LLVM 项目中的链接后优化器：读取已链接的可执行文件，依据运行时 profile 重排其中的机器码，使热代码集中，从而减少指令缓存（i-cache）和 iTLB 未命中。BOLT 基本不改变执行的指令，只改变指令的位置，因此可以叠加在 PGO、LTO 之上。
 
 BOLT 适用于代码量大、取指开销高的程序，如编译器、数据库、大型服务端程序。热点很少或主要耗时在 I/O 上的程序收益有限。BOLT 处理机器码，其版本无需与 rustc 内置的 LLVM 一致。ripgrep 上的实测效果见 7.5 节。
 
@@ -254,7 +258,7 @@ profile 可通过插桩获得（计数精确，插桩版运行较慢），也可
 | 3. 优化 | 依据 profile 重排二进制 | `<app>` + `<app>.fdata` | `<app>.bolt` |
 | 4. 验证 | 确认行为不变并测量性能 | `<app>`、`<app>.bolt` | 对比结果 |
 
-下文中，`<app>`、`<workload>`、`<triple>` 的含义与 2.3 节相同。
+下文中，`<app>`、`<workload>`、`<bench>`、`<triple>` 的含义与 2.3 节相同。
 
 #### 步骤 0：准备环境
 
@@ -300,6 +304,7 @@ readelf -S <app> | grep symtab        # 有输出：符号表存在
 以插桩版程序运行典型负载，获取精确的 profile。
 
 ```bash
+mkdir -p /tmp/bolt                                # profile 的写出目录
 # <app>：程序的可执行文件名，如 rg
 llvm-bolt <app> -instrument -o <app>.inst \
   --instrumentation-file=/tmp/bolt/prof.fdata \
@@ -415,7 +420,7 @@ BOLT 的效果主要体现为 i-cache 和 iTLB 未命中减少。
 
    ```bash
    # <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
-   RUSTFLAGS="-Cprofile-use=/path/to/merged.profdata -Clink-args=-Wl,-q" \
+   RUSTFLAGS="-Cprofile-use=/tmp/pgo-data/merged.profdata -Clink-args=-Wl,-q" \
    cargo build --release --target <triple>
    ```
 
@@ -474,7 +479,7 @@ bash examples/bolt/run.sh
 bash examples/cargo-pgo/run.sh
 ```
 
-所需工具见 2.3 节、4.4 节的步骤 0，cargo-pgo 案例另需 `cargo install cargo-pgo`。语料和构建产物写入 `examples/work/`，约需 4 GB，可通过环境变量 `WORK_DIR` 修改；在 WSL 中，仓库或 `WORK_DIR` 应位于 Linux 文件系统内，否则文件共享的 I/O 开销会影响测量结果。
+所需工具见 2.3 节、4.4 节的步骤 0，评测另需 `perf`（需能读取硬件计数器）、`hyperfine`，下载语料需要 `curl`；cargo-pgo 案例另需 `cargo install cargo-pgo`。语料和构建产物写入 `examples/work/`，约需 4 GB，可通过环境变量 `WORK_DIR` 修改；在 WSL 中，仓库或 `WORK_DIR` 应位于 Linux 文件系统内，否则文件共享的 I/O 开销会影响测量结果。
 
 ### 7.2 PGO 优化方法
 

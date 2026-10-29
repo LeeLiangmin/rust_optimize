@@ -11,13 +11,7 @@
 | [`subjects/`](subjects/) | 实验对象 ripgrep 14.1.1 的源码 | [subjects/README.md](subjects/README.md) |
 | `work/` | 运行时生成的语料、构建缓存、可执行文件和 profile，不纳入版本控制 | — |
 
-BOLT 和 cargo-pgo 案例使用 PGO 案例的产物，需按以下顺序运行：
-
-```bash
-bash examples/pgo/run.sh
-bash examples/bolt/run.sh
-bash examples/cargo-pgo/run.sh
-```
+运行顺序和环境要求见 [GUIDE.md 7.1 节](../GUIDE.md#71-案例说明)。
 
 ## 负载与评测方法
 
