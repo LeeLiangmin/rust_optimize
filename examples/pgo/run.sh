@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# PGO 案例：对 ripgrep 应用 PGO。步骤编号与 GUIDE.md 2.3 节一致，说明见 GUIDE.md 7.2 节。
+# PGO 案例：对 ripgrep 应用 PGO。步骤编号与 GUIDE.md 2.3 节一致，说明见同目录的 README.md。
+# 通常通过 examples/run.sh 运行；性能评测由 examples/run.sh evaluate 统一完成。
 set -euo pipefail
 EX=$(cd "$(dirname "$0")/.." && pwd)          # examples/
 WORK=$(realpath -m "${WORK_DIR:-$EX/work}")   # 产物目录，可用 WORK_DIR 覆盖
@@ -40,4 +41,5 @@ echo "缺少 profile 的函数告警：$(grep -c 'no profile data available' "$W
 ls -lh "$BIN/rg-pgo"
 
 step "5：验证"
-"$EX/common/bench.sh" "$EX/pgo/results.md" "$BIN/rg-base" "$BIN/rg-pgo"
+"$EX/common/bench.sh" check "$BIN/rg-base" "$BIN/rg-pgo"
+echo "性能评测：bash examples/run.sh evaluate"

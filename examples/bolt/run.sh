@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # BOLT 案例：对 ripgrep 应用 BOLT（插桩、采样两种方式），并与 PGO 叠加。
-# 步骤编号与 GUIDE.md 4.4 节一致，与 PGO 叠加对应 GUIDE.md 第 5 章，说明见 GUIDE.md 7.3 节。
-# 与 PGO 叠加需要先运行 ../pgo/run.sh。
+# 步骤编号与 GUIDE.md 4.4 节一致，与 PGO 叠加对应 GUIDE.md 第 5 章，说明见同目录的 README.md。
+# 与 PGO 叠加使用 pgo 案例的 PGO profile；通过 examples/run.sh bolt 运行时会先补齐该产物。
 set -euo pipefail
 EX=$(cd "$(dirname "$0")/.." && pwd)          # examples/
 WORK=$(realpath -m "${WORK_DIR:-$EX/work}")   # 产物目录，可用 WORK_DIR 覆盖
@@ -72,7 +72,7 @@ if [ -f "$PGO_PROFILE" ]; then
     instrument "$BIN/rg-pgo-reloc" "$DATA/pgo-instr"
     optimize "$BIN/rg-pgo-reloc" "$BIN/rg-pgo-bolt" "$DATA/pgo-instr/merged.fdata"
 else
-    echo "未找到 PGO profile，跳过本步骤（先运行 ../pgo/run.sh）"
+    echo "未找到 PGO profile，跳过本步骤（先运行 bash examples/run.sh pgo）"
 fi
 
 step "4：验证"
@@ -80,4 +80,5 @@ bins=()
 for v in base pgo bolt bolt-perf pgo-bolt; do
     [ -x "$BIN/rg-$v" ] && bins+=("$BIN/rg-$v")
 done
-"$EX/common/bench.sh" "$EX/bolt/results.md" "${bins[@]}"
+"$EX/common/bench.sh" check "${bins[@]}"
+echo "性能评测：bash examples/run.sh evaluate"
