@@ -14,9 +14,9 @@
 | [6 使用 cargo-pgo](GUIDE.md#6-使用-cargo-pgo) | 用 cargo-pgo 完成 PGO、BOLT 和两者叠加 |
 | [7 实践案例：ripgrep](GUIDE.md#7-实践案例ripgrep) | 案例说明、各案例的步骤结果、优化效果 |
 
-## 运行实践案例
+## 实践案例
 
-案例脚本位于 [`examples/`](examples/README.md)，需要 Linux、rustup 工具链、`perf`、`hyperfine`、`curl`；BOLT 案例另需 18 及以上版本的 BOLT 工具，cargo-pgo 案例另需 `cargo install cargo-pgo`。完整要求见 [7.1 节](GUIDE.md#71-案例说明)。BOLT 和 cargo-pgo 案例使用 PGO 案例的产物，需按以下顺序运行：
+案例以 ripgrep 为实验对象，脚本位于 [`examples/`](examples/README.md)，按手册的步骤执行，环境要求见 [7.1 节](GUIDE.md#71-案例说明)。按以下顺序运行：
 
 ```bash
 bash examples/pgo/run.sh         # 约 6 分钟，含首次下载语料
