@@ -463,27 +463,27 @@ BOLT 优化后的产物为 `target/<triple>/release/<app>-bolt-optimized`。`car
 
 ### 7.1 案例说明
 
-以 ripgrep 14.1.1 源码为实验对象，按 PGO、BOLT、PGO 与 BOLT 叠加以及 cargo-pgo 的使用方法完成三个案例，并在同一次运行中评测全部版本：
+以 ripgrep 14.1.1 源码为实验对象，以 Linux 6.6 源码为搜索语料：用 9 条典型搜索采集 profile，用另外 7 条搜索评测，评测用例与训练负载不重复。三个案例分别按本手册的方法构建优化版本：
 
-| 案例 | 对应章节 | 生成的版本 |
+| 案例 | 使用的方法 | 生成的版本 |
 |:---|:---|:---|
-| pgo | 2.3 节 | `rg-pgo` |
-| bolt | 4.4 节、第 5 章 | `rg-bolt`（插桩 profile）、`rg-bolt-perf`（采样 profile）、`rg-pgo-bolt`（PGO + BOLT） |
-| cargo-pgo | 第 6 章 | `rg-cargo-pgo`、`rg-cargo-pgo-bolt` |
+| pgo | PGO（2.3 节） | `rg-pgo` |
+| bolt | BOLT 插桩采集与采样采集（4.4 节），PGO 与 BOLT 叠加（第 5 章） | `rg-bolt`、`rg-bolt-perf`、`rg-pgo-bolt` |
+| cargo-pgo | cargo-pgo（第 6 章） | `rg-cargo-pgo`、`rg-cargo-pgo-bolt` |
 
-在仓库根目录执行以下命令即可运行全部案例并评测，测试环境下约 20 分钟：
+在仓库根目录执行以下命令，依次运行三个案例并在同一次运行中评测全部版本：
 
 ```bash
 bash examples/run.sh
 ```
 
-各案例的步骤、实际结果、环境要求和评测方法见 [examples/README.md](examples/README.md)，原始数据见 [examples/results.md](examples/results.md)。测试环境为 Intel Core i7-9750H（支持 LBR）、WSL2 Ubuntu 24.04、rustc 1.93.1（LLVM 21.1.8）、BOLT 21.1.8、cargo-pgo 0.3.0。
+环境要求、各步骤的实际结果和评测方法见 [examples/README.md](examples/README.md)，完整数据见 [examples/results.md](examples/results.md)。
 
 ### 7.2 优化效果
 
-评测使用 7 条与训练负载不重复的 ripgrep 搜索，指标为 `perf stat` 测得的用户态计数器，均为相对普通 release 构建的变化：
+以下数据为用户态硬件计数器相对普通 release 构建 `rg-base` 的变化，测试环境为 Intel Core i7-9750H、WSL2 Ubuntu 24.04、rustc 1.93.1、BOLT 21.1.8。cycles 和指令数取 no_literal 以外 6 个用例的范围，L1 i-cache 未命中取全部 7 个用例的范围。
 
-| 版本 | cycles（6 个用例） | 指令数（6 个用例） | L1 i-cache 未命中（7 个用例） |
+| 版本 | cycles | 指令数 | L1 i-cache 未命中 |
 |:---|---:|---:|---:|
 | PGO | −9.9% ~ −11.9% | −5.3% ~ −8.3% | −28.3% ~ −37.3% |
 | BOLT（插桩） | −4.8% ~ −11.2% | −0.4% ~ −2.7% | −49.5% ~ −53.2% |
@@ -492,10 +492,14 @@ bash examples/run.sh
 | cargo-pgo：PGO | −9.0% ~ −11.5% | −5.3% ~ −8.1% | −28.1% ~ −34.0% |
 | cargo-pgo：PGO + BOLT | −11.3% ~ −14.7% | −5.4% ~ −8.4% | −46.3% ~ −50.0% |
 
-cycles 和指令数一列不含 no_literal 用例：该用例的耗时集中在正则引擎的一个小循环内，各版本的 cycles 变化不超过 3.3%。
+- PGO：主要减少执行的指令数，L1 i-cache 未命中减少约三分之一。
+- BOLT：指令数基本不变，L1 i-cache 未命中减少约一半，与其只改变代码布局的原理一致；插桩和采样两种 profile 的 i-cache 降幅接近。
+- PGO + BOLT：每个用例的 cycles 降幅都不小于单独使用 PGO 或 BOLT。
+- cargo-pgo：两个版本与手动流程的对应版本效果接近。
 
-- PGO 主要减少执行的指令数；BOLT 几乎不改变指令数，L1 i-cache 未命中减少约一半，与两者的原理一致。
-- PGO + BOLT 的 cycles 降幅在 7 个用例中均不小于单独使用 PGO 或 BOLT；cargo-pgo 得到的版本与手动流程效果接近。
+结果的适用范围：
+
+- no_literal 的耗时集中在正则引擎的一个小循环内，各版本的 cycles 变化不超过 3.3%，未计入上表的 cycles 和指令数范围。
 - 墙钟时间的变化与测量的标准差处于同一量级，不能据此判断端到端性能：该负载的 CPU 时间约一半为内核态，而 PGO 和 BOLT 只作用于用户态代码。
 
 ## 参考
