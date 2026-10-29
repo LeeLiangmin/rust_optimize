@@ -71,8 +71,8 @@ LLVM 利用 profile 进行的主要优化：
 安装合并 profile 所需的 `llvm-profdata`。
 
 ```bash
-# <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
 rustup component add llvm-tools-preview
+# <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
 PROFDATA=$(rustc --print sysroot)/lib/rustlib/<triple>/bin/llvm-profdata
 ```
 
@@ -100,8 +100,8 @@ cargo build --release --target <triple>
 以插桩版程序执行典型任务。
 
 ```bash
-# <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
 rm -rf /tmp/pgo-data                         # 清除旧的 profile
+# <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
 ./target/<triple>/release/<app> <workload>   # 可多次运行，使用不同输入
 ```
 
@@ -429,12 +429,12 @@ BOLT profile 须在 PGO 版本上重新采集。PGO 版与普通版的机器码�
 社区工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将 PGO 和 BOLT 的构建、采集后的合并和优化构建封装为几条命令，自动处理 `--target`、profile 目录、`llvm-profdata` 路径和 BOLT 所需的重定位参数，并通过 `PATH` 查找 `llvm-bolt` 和 `merge-fdata`。得到优化版后，仍按 2.3 节步骤 5 或 4.4 节步骤 4 验证。
 
 ```bash
-# <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
 cargo install cargo-pgo
 cargo pgo info                                                  # 检查 rustc 版本和所需工具
 
 # PGO
 cargo pgo build                                                 # 2.3 节步骤 1
+# <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
 ./target/<triple>/release/<app> <workload>                      # 步骤 2
 cargo pgo optimize                                              # 步骤 3、4
 
