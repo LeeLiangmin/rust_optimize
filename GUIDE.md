@@ -19,7 +19,7 @@ PGO 与 BOLT 可以叠加使用，顺序为先 PGO、后 BOLT。
 | 技术 | 支持情况 | 所需工具 | 平台 |
 |:---|:---|:---|:---|
 | PGO | rustc 自 1.37 起提供稳定的编译选项 `-Cprofile-generate`、`-Cprofile-use` | `llvm-profdata`，由 rustup 组件 `llvm-tools-preview` 提供 | rustc 支持的主流平台 |
-| FGO | 暂不支持。FGO 是华为在 LLVM 之上的定制实现（如毕昇编译器），上游 LLVM 没有这项功能，基于上游 LLVM 的社区 rustc 也就无法使用（见 3.4 节） | — | — |
+| FGO | 暂不支持。FGO 是华为在 LLVM 之上的定制实现（如毕昇编译器），上游 LLVM 没有这项功能，基于上游 LLVM 的社区 rustc 也就无法使用 | — | — |
 | BOLT | 不属于 Rust 工具链，作用于 rustc 生成的二进制；构建时以 `-Clink-args=-Wl,-q` 保留重定位信息 | `llvm-bolt`、`merge-fdata`（LLVM 14 起提供，需单独安装）；采样方式另需 `perf`、`perf2bolt` | Linux ELF（x86_64、AArch64） |
 
 社区工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将 PGO 和 BOLT 的流程封装为 Cargo 子命令，自动处理 `--target`、profile 目录、工具路径和重定位参数；以 PGO 为例，只需执行 `cargo pgo build`、运行负载、执行 `cargo pgo optimize`（见第 6 章）。
