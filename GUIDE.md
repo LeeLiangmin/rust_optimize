@@ -71,6 +71,7 @@ LLVM 利用 profile 进行的主要优化：
 安装合并 profile 所需的 `llvm-profdata`。
 
 ```bash
+# <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
 rustup component add llvm-tools-preview
 PROFDATA=$(rustc --print sysroot)/lib/rustlib/<triple>/bin/llvm-profdata
 ```
@@ -84,6 +85,7 @@ PROFDATA=$(rustc --print sysroot)/lib/rustlib/<triple>/bin/llvm-profdata
 生成记录各分支执行次数的程序。
 
 ```bash
+# <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
 RUSTFLAGS="-Cprofile-generate=/tmp/pgo-data" \
 cargo build --release --target <triple>
 ```
@@ -98,6 +100,7 @@ cargo build --release --target <triple>
 以插桩版程序执行典型任务。
 
 ```bash
+# <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
 rm -rf /tmp/pgo-data                         # 清除旧的 profile
 ./target/<triple>/release/<app> <workload>   # 可多次运行，使用不同输入
 ```
@@ -125,6 +128,7 @@ $PROFDATA merge -o /tmp/pgo-data/merged.profdata /tmp/pgo-data
 依据 profile 重新编译。
 
 ```bash
+# <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
 RUSTFLAGS="-Cprofile-use=/tmp/pgo-data/merged.profdata -Cllvm-args=-pgo-warn-missing-function" \
 cargo build --release --target <triple>
 ```
@@ -285,6 +289,7 @@ export PATH=/usr/lib/llvm-21/bin:$PATH
 生成保留重定位信息和符号表的二进制。
 
 ```bash
+# <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
 RUSTFLAGS="-Clink-args=-Wl,-q" cargo build --release --target <triple>
 ```
 
@@ -410,6 +415,7 @@ BOLT 的效果主要体现为 i-cache 和 iTLB 未命中减少。
 2. 使用 PGO profile 构建，同时保留重定位信息：
 
    ```bash
+   # <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
    RUSTFLAGS="-Cprofile-use=/path/to/merged.profdata -Clink-args=-Wl,-q" \
    cargo build --release --target <triple>
    ```
@@ -423,6 +429,7 @@ BOLT profile 须在 PGO 版本上重新采集。PGO 版与普通版的机器码�
 社区工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将 PGO 和 BOLT 的构建、采集后的合并和优化构建封装为几条命令，自动处理 `--target`、profile 目录、`llvm-profdata` 路径和 BOLT 所需的重定位参数，并通过 `PATH` 查找 `llvm-bolt` 和 `merge-fdata`。得到优化版后，仍按 2.3 节步骤 5 或 4.4 节步骤 4 验证。
 
 ```bash
+# <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
 cargo install cargo-pgo
 cargo pgo info                                                  # 检查 rustc 版本和所需工具
 
