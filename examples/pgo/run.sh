@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PGO 案例：对 ripgrep 应用 PGO。步骤编号与 GUIDE.md 2.3 节一致，说明见 GUIDE.md 7.3 节。
+# PGO 案例：对 ripgrep 应用 PGO。步骤编号与 GUIDE.md 2.3 节一致，说明见 GUIDE.md 7.2 节。
 set -euo pipefail
 EX=$(cd "$(dirname "$0")/.." && pwd)          # examples/
 WORK=$(realpath -m "${WORK_DIR:-$EX/work}")   # 产物目录，可用 WORK_DIR 覆盖

@@ -1,6 +1,6 @@
 # Rust 程序优化指导与实践
 
-本仓库提供一本 Rust 程序反馈式优化（PGO、FGO、BOLT）的手册 [GUIDE.md](GUIDE.md) 和可在本地复现的实践案例。手册说明 Rust 对各项技术的支持情况、原理、使用方法和注意事项，并以 ripgrep 为实践案例给出各步骤的结果和实测数据。在该案例中，PGO + BOLT 使 7 个评测用例中 6 个的用户态 cycles 减少 12.1%–16.8%，7 个用例的 L1 i-cache 未命中减少 44.4%–48.8%（见 [7.6 节](GUIDE.md#76-优化效果)）。
+本仓库提供一本 Rust 程序反馈式优化（PGO、FGO、BOLT）的手册 [GUIDE.md](GUIDE.md) 和可在本地复现的实践案例。手册说明 Rust 对各项技术的支持情况、原理、使用方法和注意事项，并以 ripgrep 为实践案例给出各步骤的结果和实测数据。在该案例中，PGO + BOLT 使 7 个评测用例中 6 个的用户态 cycles 减少 12.1%–16.8%，7 个用例的 L1 i-cache 未命中减少 44.4%–48.8%（见 [7.5 节](GUIDE.md#75-优化效果)）。
 
 ## 手册
 
@@ -12,7 +12,7 @@
 | [4 BOLT](GUIDE.md#4-bolt) | 简介、优化原理、输入二进制的要求、使用方法、注意事项 |
 | [5 PGO 与 BOLT 叠加](GUIDE.md#5-pgo-与-bolt-叠加) | 叠加的顺序和步骤 |
 | [6 使用 cargo-pgo](GUIDE.md#6-使用-cargo-pgo) | 用 cargo-pgo 完成 PGO、BOLT 和两者叠加 |
-| [7 实践案例：ripgrep](GUIDE.md#7-实践案例ripgrep) | 案例说明、负载与评测方法、各案例的步骤结果、优化效果 |
+| [7 实践案例：ripgrep](GUIDE.md#7-实践案例ripgrep) | 案例说明、各案例的步骤结果、优化效果 |
 
 ## 运行实践案例
 
