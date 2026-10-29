@@ -497,11 +497,6 @@ bash examples/run.sh
 - PGO + BOLT：每个用例的 cycles 降幅都不小于单独使用 PGO 或 BOLT。
 - cargo-pgo：两个版本与手动流程的对应版本效果接近。
 
-结果的适用范围：
-
-- no_literal 的耗时集中在正则引擎的一个小循环内，各版本的 cycles 变化不超过 3.3%，未计入上表的 cycles 和指令数范围。
-- 墙钟时间的变化与测量的标准差处于同一量级，不能据此判断端到端性能：该负载的 CPU 时间约一半为内核态，而 PGO 和 BOLT 只作用于用户态代码。
-
 ## 参考
 
 - [The rustc book：Profile-guided Optimization](https://doc.rust-lang.org/rustc/profile-guided-optimization.html)
