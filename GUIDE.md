@@ -90,10 +90,8 @@ RUSTFLAGS="-Cprofile-generate=/tmp/pgo-data" \
 cargo build --release --target <triple>
 ```
 
-| 参数 | 含义 |
-|:---|:---|
-| `-Cprofile-generate=<目录>` | 使 LLVM 插入计数器；插桩版程序退出时将计数写入该目录 |
-| `--target <triple>` | 显式指定 target 后，`RUSTFLAGS` 只作用于目标程序，不作用于 build script 和过程宏；否则后者也会被插桩，并在构建过程中写出无关的 profile |
+- `-Cprofile-generate=<目录>`：使 LLVM 插入计数器；插桩版程序退出时将计数写入该目录。
+- `--target <triple>`：显式指定 target 后，`RUSTFLAGS` 只作用于目标程序，不作用于 build script 和过程宏；否则后者也会被插桩，并在构建过程中写出无关的 profile。
 
 产物为 `target/<triple>/release/<app>`，体积明显大于普通 release 版。profile 目录在程序运行时才生成。
 
@@ -118,11 +116,9 @@ rm -rf /tmp/pgo-data                         # 清除旧的 profile
 $PROFDATA merge -o /tmp/pgo-data/merged.profdata /tmp/pgo-data
 ```
 
-| 参数 | 含义 |
-|:---|:---|
-| `merge` | 合并一个或多个 `.profraw`，输出 `.profdata` |
-| `-o <文件>` | 输出文件 |
-| `/tmp/pgo-data` | 输入；传入目录时读取其中所有 `.profraw`，也可逐个列出文件 |
+- `merge`：合并一个或多个 `.profraw`，输出 `.profdata`。
+- `-o <文件>`：输出文件。
+- `/tmp/pgo-data`：输入；传入目录时读取其中所有 `.profraw`，也可逐个列出文件。
 
 检查方法：`$PROFDATA show /tmp/pgo-data/merged.profdata` 输出摘要，其中 `Total count`（总计数）应非零。
 
@@ -135,10 +131,8 @@ RUSTFLAGS="-Cprofile-use=/tmp/pgo-data/merged.profdata -Cllvm-args=-pgo-warn-mis
 cargo build --release --target <triple>
 ```
 
-| 参数 | 含义 |
-|:---|:---|
-| `-Cprofile-use=<文件>` | 读取 profile，用于指导优化 |
-| `-Cllvm-args=-pgo-warn-missing-function` | 函数在 profile 中缺失时发出警告，用于检查 profile 与源码是否匹配 |
+- `-Cprofile-use=<文件>`：读取 profile，用于指导优化。
+- `-Cllvm-args=-pgo-warn-missing-function`：函数在 profile 中缺失时发出警告，用于检查 profile 与源码是否匹配。
 
 源码、依赖版本和其他编译选项须与步骤 1 相同，仅将 `-Cprofile-generate` 替换为 `-Cprofile-use`。PGO 可与 LTO（`lto = "fat"`、`codegen-units = 1`）同时使用。产物为 `target/<triple>/release/<app>`。
 
@@ -282,11 +276,9 @@ sudo apt install bolt-21
 export PATH=/usr/lib/llvm-21/bin:$PATH
 ```
 
-| 工具 | 用途 |
-|:---|:---|
-| `llvm-bolt` | 插桩与优化 |
-| `merge-fdata` | 合并多个 `.fdata` |
-| `perf2bolt` | 将 `perf` 采样数据转换为 `.fdata`（仅采样方式需要） |
+- `llvm-bolt`：插桩与优化。
+- `merge-fdata`：合并多个 `.fdata`。
+- `perf2bolt`：将 `perf` 采样数据转换为 `.fdata`（仅采样方式需要）。
 
 检查方法：`llvm-bolt --version` 应输出版本号。
 
@@ -298,10 +290,8 @@ export PATH=/usr/lib/llvm-21/bin:$PATH
 RUSTFLAGS="-Clink-args=-Wl,-q" cargo build --release --target <triple>
 ```
 
-| 参数 | 含义 |
-|:---|:---|
-| `-Clink-args=-Wl,-q` | rustc 将 `-Wl,-q` 传给链接器，链接器保留重定位信息 |
-| `--target <triple>` | 显式指定 target 后，`RUSTFLAGS` 只作用于目标程序，不作用于 build script 和过程宏 |
+- `-Clink-args=-Wl,-q`：rustc 将 `-Wl,-q` 传给链接器，链接器保留重定位信息。
+- `--target <triple>`：显式指定 target 后，`RUSTFLAGS` 只作用于目标程序，不作用于 build script 和过程宏。
 
 产物为 `target/<triple>/release/<app>`。
 
@@ -324,15 +314,13 @@ llvm-bolt <app> -instrument -o <app>.inst \
 merge-fdata /tmp/bolt/prof.fdata.*.fdata > <app>.fdata   # 合并多次运行的 profile
 ```
 
-| 参数 | 含义 |
-|:---|:---|
-| `-instrument` | 生成插桩版程序，不做优化 |
-| `-o <app>.inst` | 插桩版程序的输出路径 |
-| `--instrumentation-file=<路径>` | 插桩版程序退出时 profile 的写出位置 |
-| `--instrumentation-file-append-pid` | 文件名追加进程号（`prof.fdata.<pid>.fdata`），多次运行互不覆盖 |
-| `--instrumentation-sleep-time=<秒>` | 按指定间隔写出 profile，用于不会主动退出的服务端程序 |
-| `--instrumentation-no-counters-clear` | 写出后不清零计数，与 `--instrumentation-sleep-time` 配合使用 |
-| `--instrumentation-wait-forks` | 等待所有子进程结束后再写出 |
+- `-instrument`：生成插桩版程序，不做优化。
+- `-o <app>.inst`：插桩版程序的输出路径。
+- `--instrumentation-file=<路径>`：插桩版程序退出时 profile 的写出位置。
+- `--instrumentation-file-append-pid`：文件名追加进程号（`prof.fdata.<pid>.fdata`），多次运行互不覆盖。
+- `--instrumentation-sleep-time=<秒>`：按指定间隔写出 profile，用于不会主动退出的服务端程序。
+- `--instrumentation-no-counters-clear`：写出后不清零计数，与 `--instrumentation-sleep-time` 配合使用。
+- `--instrumentation-wait-forks`：等待所有子进程结束后再写出。
 
 检查方法：每次运行生成一个非空的 `prof.fdata.<pid>.fdata`，合并后得到 `<app>.fdata`。
 
@@ -352,12 +340,10 @@ perf record -e cycles:u -o perf.data -- ./<app> <workload>
 perf2bolt -p perf.data -o <app>.fdata -nl ./<app>
 ```
 
-| 参数 | 含义 |
-|:---|:---|
-| `-e cycles:u` | 仅对用户态 cycles 事件采样 |
-| `-j any,u` | 同时记录用户态分支（依赖 LBR），BOLT 据此获得每次跳转的源地址和目标地址 |
-| `perf2bolt -p <文件>` | 输入的 `perf.data` |
-| `-nl` | 输入不含分支记录，只统计各位置的执行次数，精度较低 |
+- `-e cycles:u`：仅对用户态 cycles 事件采样。
+- `-j any,u`：同时记录用户态分支（依赖 LBR），BOLT 据此获得每次跳转的源地址和目标地址。
+- `perf2bolt -p <文件>`：输入的 `perf.data`。
+- `-nl`：输入不含分支记录，只统计各位置的执行次数，精度较低。
 
 检查方法：用第一组命令采样后，`perf report -i perf.data --header-only | grep "branch stack"` 有输出即表示 CPU 支持 LBR。对运行中的服务，可使用 `perf record ... -p <pid> -- sleep 60` 采样 60 秒。
 
