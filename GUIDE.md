@@ -102,6 +102,8 @@ cargo build --release --target <triple>
 ```bash
 rm -rf /tmp/pgo-data                         # 清除旧的 profile
 # <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
+# <app>：程序的可执行文件名，如 rg
+# <workload>：代表实际使用场景的运行参数，如 mutex_lock linux-6.6/
 ./target/<triple>/release/<app> <workload>   # 可多次运行，使用不同输入
 ```
 
@@ -146,6 +148,8 @@ cargo build --release --target <triple>
 2. 性能：使用与训练负载不同的输入测量，避免结果只反映训练数据上的表现。
 
 ```bash
+# <app>：程序的可执行文件名，如 rg
+# <bench>：与训练负载不同的评测参数，如 PM_RESUME linux-6.6/
 hyperfine --warmup 3 './<app>-base <bench>' './<app>-pgo <bench>'                   # 墙钟时间
 perf stat -e cycles:u,instructions:u,L1-icache-load-misses:u -- ./<app>-pgo <bench>   # 用户态硬件计数器
 ```
@@ -181,6 +185,7 @@ FGO 是华为自研的反馈优化特性。FGO 沿用 PGO 的插桩和采集流�
 1. 构建插桩版：
 
    ```bash
+   # <编译选项>：项目原有的其他编译选项，如 -O2
    clang <编译选项> -fprofile-generate=/path/pgo-data ...
    ```
 
@@ -194,12 +199,14 @@ FGO 是华为自研的反馈优化特性。FGO 沿用 PGO 的插桩和采集流�
 4. 依据 profile 重新编译，生成可审计的 `profile.cfg`。这一步为 FGO 特有：
 
    ```bash
+   # <编译选项>：项目原有的其他编译选项，如 -O2
    clang <编译选项> -fprofile-use=ir.profdata -ffgo-feature-gen=profile.cfg ...
    ```
 
 5. 以 `profile.cfg` 编译优化版：
 
    ```bash
+   # <编译选项>：项目原有的其他编译选项，如 -O2
    clang <编译选项> -ffgo-feature-use=profile.cfg ...
    ```
 
@@ -283,6 +290,7 @@ RUSTFLAGS="-Clink-args=-Wl,-q" cargo build --release --target <triple>
 检查方法：
 
 ```bash
+# <app>：程序的可执行文件名，如 rg
 readelf -S <app> | grep rela.text     # 有输出：重定位信息已保留
 readelf -S <app> | grep symtab        # 有输出：符号表存在
 ```
@@ -292,9 +300,11 @@ readelf -S <app> | grep symtab        # 有输出：符号表存在
 以插桩版程序运行典型负载，获取精确的 profile。
 
 ```bash
+# <app>：程序的可执行文件名，如 rg
 llvm-bolt <app> -instrument -o <app>.inst \
   --instrumentation-file=/tmp/bolt/prof.fdata \
   --instrumentation-file-append-pid               # 生成插桩版程序
+# <workload>：代表实际使用场景的运行参数，如 mutex_lock linux-6.6/
 ./<app>.inst <workload>                           # 运行典型负载，可多次运行
 merge-fdata /tmp/bolt/prof.fdata.*.fdata > <app>.fdata   # 合并多次运行的 profile
 ```
@@ -314,6 +324,8 @@ merge-fdata /tmp/bolt/prof.fdata.*.fdata > <app>.fdata   # 合并多次运行的
 在原程序（步骤 1 的 `<app>`）运行时采样，开销小，适用于生产环境，与步骤 2a 二选一。CPU 支持 LBR 时（如 Intel 物理机）：
 
 ```bash
+# <app>：程序的可执行文件名，如 rg
+# <workload>：代表实际使用场景的运行参数，如 mutex_lock linux-6.6/
 perf record -e cycles:u -j any,u -o perf.data -- ./<app> <workload>
 perf2bolt -p perf.data -o <app>.fdata ./<app>
 ```
@@ -321,6 +333,8 @@ perf2bolt -p perf.data -o <app>.fdata ./<app>
 CPU 不支持 LBR 时（如多数 AArch64 机器、部分虚拟机）：
 
 ```bash
+# <app>：程序的可执行文件名，如 rg
+# <workload>：代表实际使用场景的运行参数，如 mutex_lock linux-6.6/
 perf record -e cycles:u -o perf.data -- ./<app> <workload>
 perf2bolt -p perf.data -o <app>.fdata -nl ./<app>
 ```
@@ -337,6 +351,7 @@ perf2bolt -p perf.data -o <app>.fdata -nl ./<app>
 依据 profile 重排步骤 1 生成的二进制（输入为 `<app>`，而非插桩版 `<app>.inst`）。
 
 ```bash
+# <app>：程序的可执行文件名，如 rg
 llvm-bolt <app> -o <app>.bolt -data=<app>.fdata \
   -reorder-blocks=ext-tsp \
   -reorder-functions=cdsort \
@@ -376,6 +391,8 @@ BOLT-INFO: N out of M functions in the binary (X%) have non-empty execution prof
 2. 性能：使用与训练负载不同的输入测量，避免结果只反映训练数据上的表现。
 
 ```bash
+# <app>：程序的可执行文件名，如 rg
+# <bench>：与训练负载不同的评测参数，如 PM_RESUME linux-6.6/
 hyperfine --warmup 3 './<app> <bench>' './<app>.bolt <bench>'      # 墙钟时间
 perf stat -e cycles:u,instructions:u,L1-icache-load-misses:u,iTLB-load-misses:u -- ./<app>.bolt <bench>
 ```
@@ -417,6 +434,8 @@ cargo pgo info                                                  # 检查 rustc �
 # PGO
 cargo pgo build                                                 # 2.3 节步骤 1
 # <triple>：目标平台，如 x86_64-unknown-linux-gnu；查看本机的值：rustc -vV | grep host
+# <app>：程序的可执行文件名，如 rg
+# <workload>：代表实际使用场景的运行参数，如 mutex_lock linux-6.6/
 ./target/<triple>/release/<app> <workload>                      # 步骤 2
 cargo pgo optimize                                              # 步骤 3、4
 
