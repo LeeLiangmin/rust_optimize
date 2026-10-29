@@ -1,6 +1,10 @@
-# Rust 程序的 PGO 与 BOLT 优化
+# Rust 反馈式优化：PGO、BOLT 与 FGO
 
-PGO 和 BOLT 依据程序运行时的 profile 进行优化，无需修改源码。PGO 在编译期调整内联、分支布局等编译决策；BOLT 在链接之后重排机器码。两者可以单独使用，也可以叠加使用。在 Rust 中，rustc 自 1.37 起内置 PGO 支持；BOLT 需单独安装，作用于 rustc 生成的二进制；华为自研的 FGO 目前不支持。
+Rust 对三项反馈式优化技术的支持情况：
+
+- PGO：rustc 自 1.37 起以稳定的编译选项 `-Cprofile-generate`、`-Cprofile-use` 支持，合并 profile 所需的 `llvm-profdata` 由 rustup 组件 `llvm-tools-preview` 提供。
+- BOLT：不属于 Rust 工具链，需单独安装 LLVM 的 BOLT 工具；可处理 rustc 生成的 Linux ELF 二进制，构建时需以 `-Clink-args=-Wl,-q` 保留重定位信息。
+- FGO：华为自研技术，社区 rustc 尚未支持。
 
 本仓库提供一本手册 [GUIDE.md](GUIDE.md) 和可在本地复现的实践案例。手册说明各项技术的原理、使用方法和注意事项，并以 ripgrep 为实践案例给出各步骤的结果和实测数据。在该案例中，PGO + BOLT 使 7 个评测用例中 6 个的用户态 cycles 减少 12.1%–16.8%，7 个用例的 L1 i-cache 未命中减少 44.4%–48.8%（见 [7.6 节](GUIDE.md#76-优化效果)）。
 
