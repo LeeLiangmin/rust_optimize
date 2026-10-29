@@ -14,7 +14,7 @@
 | FGO | 编译期 | 先由 profile 生成可审计的反馈信息文件，再据此优化编译（华为自研特性） | — |
 | BOLT | 链接后 | 依据 profile 重排二进制中的机器码，使热代码集中 | 指令缓存（i-cache）和 iTLB 未命中减少 |
 
-PGO 与 BOLT 可以叠加使用，顺序为先 PGO、后 BOLT。在 ripgrep 实践案例中，PGO + BOLT 使 7 个评测用例中 6 个的用户态 cycles 减少 12.1%–16.8%（见 7.6 节）。
+PGO 与 BOLT 可以叠加使用，顺序为先 PGO、后 BOLT。
 
 ### 1.2 Rust 支持情况
 
@@ -68,16 +68,22 @@ LLVM 利用 profile 进行的主要优化：
 
 下文中，`<app>` 为程序名，`<workload>` 为代表实际使用场景的运行参数，`<triple>` 为目标平台（如 `x86_64-unknown-linux-gnu`，由 `rustc -vV` 输出中的 `host` 行获得）。
 
-步骤 0：准备环境。安装合并 profile 所需的 `llvm-profdata`。
+#### 步骤 0：准备环境
+
+安装合并 profile 所需的 `llvm-profdata`。
 
 ```bash
 rustup component add llvm-tools-preview
 PROFDATA=$(rustc --print sysroot)/lib/rustlib/<triple>/bin/llvm-profdata
 ```
 
-`llvm-profdata` 生成的 `.profdata` 须能被 rustc 内置的 LLVM 读取。rustup 的 `llvm-tools-preview` 组件与当前工具链配套，版本一致。Cargo 需为 1.39 及以上，更早的版本存在影响 PGO 的已知问题。检查方法：`$PROFDATA --version` 输出的 LLVM 版本应与 `rustc -vV` 中的 `LLVM version` 一致。
+`llvm-profdata` 生成的 `.profdata` 须能被 rustc 内置的 LLVM 读取。rustup 的 `llvm-tools-preview` 组件与当前工具链配套，版本一致。Cargo 需为 1.39 及以上，更早的版本存在影响 PGO 的已知问题。
 
-步骤 1：插桩构建。生成记录各分支执行次数的程序。
+检查方法：`$PROFDATA --version` 输出的 LLVM 版本应与 `rustc -vV` 中的 `LLVM version` 一致。
+
+#### 步骤 1：插桩构建
+
+生成记录各分支执行次数的程序。
 
 ```bash
 RUSTFLAGS="-Cprofile-generate=/tmp/pgo-data" \
@@ -91,16 +97,22 @@ cargo build --release --target <triple>
 
 产物为 `target/<triple>/release/<app>`，体积明显大于普通 release 版。profile 目录在程序运行时才生成。
 
-步骤 2：采集。以插桩版程序执行典型任务。
+#### 步骤 2：采集
+
+以插桩版程序执行典型任务。
 
 ```bash
 rm -rf /tmp/pgo-data                         # 清除旧的 profile
 ./target/<triple>/release/<app> <workload>   # 可多次运行，使用不同输入
 ```
 
-编译器只针对负载中出现的路径进行优化，负载应贴近实际用法，覆盖主要功能。默认文件名形如 `default_<签名>_<编号>.profraw`，多次运行的计数累加到同一文件。检查方法：采集完成后，`/tmp/pgo-data` 中应有非空的 `.profraw` 文件。
+编译器只针对负载中出现的路径进行优化，负载应贴近实际用法，覆盖主要功能。默认文件名形如 `default_<签名>_<编号>.profraw`，多次运行的计数累加到同一文件。
 
-步骤 3：合并。将原始计数转换为编译器可读的索引格式。
+检查方法：采集完成后，`/tmp/pgo-data` 中应有非空的 `.profraw` 文件。
+
+#### 步骤 3：合并
+
+将原始计数转换为编译器可读的索引格式。
 
 ```bash
 $PROFDATA merge -o /tmp/pgo-data/merged.profdata /tmp/pgo-data
@@ -114,7 +126,9 @@ $PROFDATA merge -o /tmp/pgo-data/merged.profdata /tmp/pgo-data
 
 检查方法：`$PROFDATA show /tmp/pgo-data/merged.profdata` 输出摘要，其中 `Total count`（总计数）应非零。
 
-步骤 4：优化构建。依据 profile 重新编译。
+#### 步骤 4：优化构建
+
+依据 profile 重新编译。
 
 ```bash
 RUSTFLAGS="-Cprofile-use=/tmp/pgo-data/merged.profdata -Cllvm-args=-pgo-warn-missing-function" \
@@ -126,9 +140,11 @@ cargo build --release --target <triple>
 | `-Cprofile-use=<文件>` | 读取 profile，用于指导优化 |
 | `-Cllvm-args=-pgo-warn-missing-function` | 函数在 profile 中缺失时发出警告，用于检查 profile 与源码是否匹配 |
 
-源码、依赖版本和其他编译选项须与步骤 1 相同，仅将 `-Cprofile-generate` 替换为 `-Cprofile-use`。PGO 可与 LTO（`lto = "fat"`、`codegen-units = 1`）同时使用。产物为 `target/<triple>/release/<app>`。检查方法：构建过程中出现大量 `no profile data available` 警告时，表示 profile 与源码不匹配（例如采集后修改过代码），需从步骤 1 重新采集。
+源码、依赖版本和其他编译选项须与步骤 1 相同，仅将 `-Cprofile-generate` 替换为 `-Cprofile-use`。PGO 可与 LTO（`lto = "fat"`、`codegen-units = 1`）同时使用。产物为 `target/<triple>/release/<app>`。
 
-步骤 5：验证。
+检查方法：构建过程中出现大量 `no profile data available` 警告时，表示 profile 与源码不匹配（例如采集后修改过代码），需从步骤 1 重新采集。
+
+#### 步骤 5：验证
 
 1. 正确性：使用测试集或一组固定输入，比较普通版与优化版的输出，两者应完全一致。
 2. 性能：使用与训练负载不同的输入测量，避免结果只反映训练数据上的表现。
@@ -255,7 +271,9 @@ profile 可通过插桩获得（计数精确，插桩版运行较慢），也可
 
 下文中，`<app>`、`<workload>`、`<triple>` 的含义与 2.3 节相同。
 
-步骤 0：准备环境。安装 BOLT 工具（Ubuntu / Debian，以 LLVM 21 为例）。
+#### 步骤 0：准备环境
+
+安装 BOLT 工具（Ubuntu / Debian，以 LLVM 21 为例）。
 
 ```bash
 wget https://apt.llvm.org/llvm.sh
@@ -272,7 +290,9 @@ export PATH=/usr/lib/llvm-21/bin:$PATH
 
 检查方法：`llvm-bolt --version` 应输出版本号。
 
-步骤 1：带重定位构建。生成保留重定位信息和符号表的二进制。
+#### 步骤 1：带重定位构建
+
+生成保留重定位信息和符号表的二进制。
 
 ```bash
 RUSTFLAGS="-Clink-args=-Wl,-q" cargo build --release --target <triple>
@@ -283,14 +303,18 @@ RUSTFLAGS="-Clink-args=-Wl,-q" cargo build --release --target <triple>
 | `-Clink-args=-Wl,-q` | rustc 将 `-Wl,-q` 传给链接器，链接器保留重定位信息 |
 | `--target <triple>` | 显式指定 target 后，`RUSTFLAGS` 只作用于目标程序，不作用于 build script 和过程宏 |
 
-产物为 `target/<triple>/release/<app>`。检查方法：
+产物为 `target/<triple>/release/<app>`。
+
+检查方法：
 
 ```bash
 readelf -S <app> | grep rela.text     # 有输出：重定位信息已保留
 readelf -S <app> | grep symtab        # 有输出：符号表存在
 ```
 
-步骤 2a：插桩采集。以插桩版程序运行典型负载，获取精确的 profile。
+#### 步骤 2a：插桩采集
+
+以插桩版程序运行典型负载，获取精确的 profile。
 
 ```bash
 llvm-bolt <app> -instrument -o <app>.inst \
@@ -312,7 +336,9 @@ merge-fdata /tmp/bolt/prof.fdata.*.fdata > <app>.fdata   # 合并多次运行的
 
 检查方法：每次运行生成一个非空的 `prof.fdata.<pid>.fdata`，合并后得到 `<app>.fdata`。
 
-步骤 2b：采样采集。在原程序（步骤 1 的 `<app>`）运行时采样，开销小，适用于生产环境，与步骤 2a 二选一。CPU 支持 LBR 时（如 Intel 物理机）：
+#### 步骤 2b：采样采集
+
+在原程序（步骤 1 的 `<app>`）运行时采样，开销小，适用于生产环境，与步骤 2a 二选一。CPU 支持 LBR 时（如 Intel 物理机）：
 
 ```bash
 perf record -e cycles:u -j any,u -o perf.data -- ./<app> <workload>
@@ -335,7 +361,9 @@ perf2bolt -p perf.data -o <app>.fdata -nl ./<app>
 
 检查方法：用第一组命令采样后，`perf report -i perf.data --header-only | grep "branch stack"` 有输出即表示 CPU 支持 LBR。对运行中的服务，可使用 `perf record ... -p <pid> -- sleep 60` 采样 60 秒。
 
-步骤 3：优化。依据 profile 重排步骤 1 生成的二进制（输入为 `<app>`，而非插桩版 `<app>.inst`）。
+#### 步骤 3：优化
+
+依据 profile 重排步骤 1 生成的二进制（输入为 `<app>`，而非插桩版 `<app>.inst`）。
 
 ```bash
 llvm-bolt <app> -o <app>.bolt -data=<app>.fdata \
@@ -359,7 +387,9 @@ llvm-bolt <app> -o <app>.bolt -data=<app>.fdata \
 | `-icf` | 合并机器码完全相同的函数 | — |
 | `-dyno-stats` | 输出 profile 上优化前后的分支统计 | 用于检查 |
 
-LLVM 14–17 中没有 `cdsort`，应将 `-reorder-functions=cdsort` 替换为 `-reorder-functions=hfsort+`，其余参数不变。产物为 `<app>.bolt`。检查方法：BOLT 的输出中包含以下两类信息。
+LLVM 14–17 中没有 `cdsort`，应将 `-reorder-functions=cdsort` 替换为 `-reorder-functions=hfsort+`，其余参数不变。产物为 `<app>.bolt`。
+
+检查方法：BOLT 的输出中包含以下两类信息。
 
 ```text
 BOLT-INFO: N out of M functions in the binary (X%) have non-empty execution profile
@@ -369,7 +399,7 @@ BOLT-INFO: N out of M functions in the binary (X%) have non-empty execution prof
 
 `X%` 为 profile 覆盖的函数比例，接近 0 表示 profile 与二进制不匹配，或负载未执行到主要代码。`taken branches` 为 profile 上实际发生的跳转次数，其下降表示基本块重排生效。
 
-步骤 4：验证。
+#### 步骤 4：验证
 
 1. 正确性：使用测试集或一组固定输入，比较 `<app>` 与 `<app>.bolt` 的输出，两者应完全一致。
 2. 性能：使用与训练负载不同的输入测量，避免结果只反映训练数据上的表现。
