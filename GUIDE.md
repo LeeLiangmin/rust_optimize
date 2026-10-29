@@ -21,7 +21,7 @@ Rust 对 PGO 和 BOLT 的支持情况：
 | profile 采集 | 插桩 | 插桩或 `perf` 采样 |
 | 平台 | rustc 支持的主流平台（Linux、macOS、Windows） | Linux ELF（x86_64、AArch64）；macOS 仅有初步的 Mach-O 支持；Windows 不可用 |
 
-rustc 目前不支持 FGO。FGO 是华为毕昇编译器的自研特性，rustc 内置的 LLVM 来自上游 LLVM，不含该特性，rustc 也没有提供对应的编译选项，详见 3.4 节。
+社区 rustc 尚未支持 FGO。FGO 是华为毕昇编译器的自研特性，rustc 内置的 LLVM 来自上游 LLVM，不含该特性，rustc 也没有提供对应的编译选项，详见 3.4 节。
 
 社区工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将 PGO 和 BOLT 的构建、采集和合并封装为 Cargo 子命令，自动处理 `--target`、profile 目录、工具路径和重定位参数，简化构建流程：以 PGO 为例，只需执行 `cargo pgo build`，运行负载，再执行 `cargo pgo optimize`，无需手动设置 `RUSTFLAGS` 和调用 `llvm-profdata`，见第 6 章。
 
