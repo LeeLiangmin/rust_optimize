@@ -9,7 +9,7 @@
 反馈式优化先以典型负载运行程序，采集各函数、各分支的执行次数（profile），再依据 profile 进行优化，无需修改源码。本手册涉及三项技术：
 
 - PGO（Profile-Guided Optimization）：编译期优化。依据 profile 调整内联、基本块布局、冷热分离等编译决策，主要效果是减少执行的指令数。
-- FGO：编译期优化，华为自研特性。先由 profile 生成可审计的反馈信息文件，再据此优化编译。
+- FGO：华为自研的编译期反馈优化。它在 PGO 的基础上多走一步：先根据 profile 生成一份可供审查的反馈信息文件，再用这份文件指导优化编译。
 - BOLT（Binary Optimization and Layout Tool）：链接后优化。依据 profile 重排二进制中的机器码，使热代码集中，主要效果是减少指令缓存（i-cache）和 iTLB 未命中。
 
 PGO 与 BOLT 可以叠加使用，顺序为先 PGO、后 BOLT。
@@ -19,7 +19,7 @@ PGO 与 BOLT 可以叠加使用，顺序为先 PGO、后 BOLT。
 | 技术 | 支持情况 | 所需工具 | 平台 |
 |:---|:---|:---|:---|
 | PGO | rustc 自 1.37 起提供稳定的编译选项 `-Cprofile-generate`、`-Cprofile-use` | `llvm-profdata`，由 rustup 组件 `llvm-tools-preview` 提供 | rustc 支持的主流平台 |
-| FGO | 社区 rustc 尚未支持：FGO 为华为定制实现，上游 LLVM 不支持，rustc 内置的 LLVM 来自上游，也没有对应的编译选项 | — | — |
+| FGO | 暂不支持。FGO 是华为在 LLVM 之上的定制实现（如毕昇编译器），上游 LLVM 没有这项功能，基于上游 LLVM 的社区 rustc 也就无法使用（见 3.4 节） | — | — |
 | BOLT | 不属于 Rust 工具链，作用于 rustc 生成的二进制；构建时以 `-Clink-args=-Wl,-q` 保留重定位信息 | `llvm-bolt`、`merge-fdata`（LLVM 14 起提供，需单独安装）；采样方式另需 `perf`、`perf2bolt` | Linux ELF（x86_64、AArch64） |
 
 社区工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将 PGO 和 BOLT 的流程封装为 Cargo 子命令，自动处理 `--target`、profile 目录、工具路径和重定位参数；以 PGO 为例，只需执行 `cargo pgo build`、运行负载、执行 `cargo pgo optimize`（见第 6 章）。
@@ -170,7 +170,7 @@ PGO 的效果主要体现为用户态指令数减少。
 
 ### 3.1 简介
 
-FGO 是华为自研的反馈优化特性。FGO 沿用 PGO 的插桩和采集流程，区别在于优化构建之前增加一次编译：依据 profile 生成反馈信息文件 `profile.cfg`，再以 `profile.cfg` 指导优化编译。`profile.cfg` 便于审计，可在优化构建前检查编译器将依据哪些反馈信息进行优化。
+FGO 是华为自研的反馈优化特性，目前在毕昇编译器中提供。它沿用 PGO 的插桩和采集流程，不同之处在于优化构建之前多了一次编译：编译器先根据 profile 生成反馈信息文件 `profile.cfg`，再依据这份文件完成优化编译。反馈信息单独落成文件后，开发者可以在优化构建之前审查编译器将依据哪些信息进行优化。
 
 ### 3.2 与 PGO 的差别
 
@@ -200,7 +200,7 @@ FGO 是华为自研的反馈优化特性。FGO 沿用 PGO 的插桩和采集流�
    llvm-profdata merge -o ir.profdata /path/pgo-data/*.profraw
    ```
 
-4. 依据 profile 重新编译，生成可审计的 `profile.cfg`。这一步为 FGO 特有：
+4. 依据 profile 重新编译，生成供审查的 `profile.cfg`。这一步是 FGO 特有的：
 
    ```bash
    # <编译选项>：项目原有的其他编译选项，如 -O2
@@ -216,7 +216,7 @@ FGO 是华为自研的反馈优化特性。FGO 沿用 PGO 的插桩和采集流�
 
 ### 3.4 Rust 中的现状
 
-`-ffgo-feature-gen`、`-ffgo-feature-use` 及其对应的功能为华为定制实现，上游 LLVM 不支持。rustc 内置的 LLVM 来自上游，也没有提供对应的编译选项，因此目前无法在 Rust 程序上使用 FGO。
+`-ffgo-feature-gen`、`-ffgo-feature-use` 这两个选项以及背后的优化功能，都是华为在 LLVM 之上的定制实现（如毕昇编译器），上游 LLVM 并不包含。rustc 内置的是上游 LLVM，也没有提供相应的编译选项，因此目前还不能在 Rust 程序上使用 FGO。
 
 ## 4 BOLT
 
