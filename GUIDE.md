@@ -2,30 +2,29 @@
 
 ## 1 概述
 
-反馈式优化依据程序运行时采集的 profile 指导优化，无需修改源码。本手册说明三项反馈式优化技术：
+本手册说明 Rust 程序的三项反馈式优化技术：PGO、FGO 和 BOLT，包括 Rust 的支持情况、原理、使用方法和注意事项，并以 ripgrep 为实践案例给出实测数据。
 
-| 技术 | 作用阶段 | 作用 |
-|:---|:---|:---|
-| PGO | 编译期 | 依据 profile 调整内联、分支布局等编译决策 |
-| FGO | 编译期 | 先由 profile 生成可审计的反馈信息文件，再据此优化编译（华为自研特性） |
-| BOLT | 链接后 | 依据 profile 重排二进制中的机器码，使热代码集中 |
+### 1.1 技术概况
 
-PGO 与 BOLT 可以单独使用，也可以叠加使用，叠加时先 PGO、后 BOLT。
+反馈式优化先以典型负载运行程序，采集各函数、各分支的执行次数（profile），再依据 profile 进行优化，无需修改源码。
 
-Rust 对 PGO 和 BOLT 的支持情况：
+| 技术 | 作用阶段 | 优化方式 | 主要效果 |
+|:---|:---|:---|:---|
+| PGO | 编译期 | 依据 profile 调整内联、基本块布局、冷热分离等编译决策 | 执行的指令数减少 |
+| FGO | 编译期 | 先由 profile 生成可审计的反馈信息文件，再据此优化编译（华为自研特性） | — |
+| BOLT | 链接后 | 依据 profile 重排二进制中的机器码，使热代码集中 | 指令缓存（i-cache）和 iTLB 未命中减少 |
 
-| 项目 | PGO | BOLT |
-|:---|:---|:---|
-| 支持方式 | rustc 自 1.37 起提供稳定的编译选项 `-Cprofile-generate`、`-Cprofile-use` | 单独安装 LLVM 的 BOLT 工具（LLVM 14 起提供）；构建时以 `-Clink-args=-Wl,-q` 保留重定位信息 |
-| 所需工具 | `llvm-profdata`，由 rustup 组件 `llvm-tools-preview` 提供 | `llvm-bolt`、`merge-fdata`；采样方式另需 `perf`、`perf2bolt` |
-| profile 采集 | 插桩 | 插桩或 `perf` 采样 |
-| 平台 | rustc 支持的主流平台（Linux、macOS、Windows） | Linux ELF（x86_64、AArch64）；macOS 仅有初步的 Mach-O 支持；Windows 不可用 |
+PGO 与 BOLT 可以叠加使用，顺序为先 PGO、后 BOLT。在 ripgrep 实践案例中，PGO + BOLT 使 7 个评测用例中 6 个的用户态 cycles 减少 12.1%–16.8%（见 7.6 节）。
 
-社区 rustc 尚未支持 FGO。FGO 是华为毕昇编译器的自研特性，rustc 内置的 LLVM 来自上游 LLVM，不含该特性，rustc 也没有提供对应的编译选项，详见 3.4 节。
+### 1.2 Rust 支持情况
 
-社区工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将 PGO 和 BOLT 的构建、采集和合并封装为 Cargo 子命令，自动处理 `--target`、profile 目录、工具路径和重定位参数，简化构建流程：以 PGO 为例，只需执行 `cargo pgo build`，运行负载，再执行 `cargo pgo optimize`，无需手动设置 `RUSTFLAGS` 和调用 `llvm-profdata`，见第 6 章。
+| 技术 | 支持情况 | 所需工具 | 平台 |
+|:---|:---|:---|:---|
+| PGO | rustc 自 1.37 起提供稳定的编译选项 `-Cprofile-generate`、`-Cprofile-use` | `llvm-profdata`，由 rustup 组件 `llvm-tools-preview` 提供 | rustc 支持的主流平台 |
+| FGO | 社区 rustc 尚未支持：rustc 内置的 LLVM 来自上游，不含该特性，也没有对应的编译选项 | — | — |
+| BOLT | 不属于 Rust 工具链，作用于 rustc 生成的二进制；构建时以 `-Clink-args=-Wl,-q` 保留重定位信息 | `llvm-bolt`、`merge-fdata`（LLVM 14 起提供，需单独安装）；采样方式另需 `perf`、`perf2bolt` | Linux ELF（x86_64、AArch64） |
 
-第 2–4 章分别说明 PGO、FGO、BOLT，第 5 章说明 PGO 与 BOLT 叠加，第 6 章说明 cargo-pgo，第 7 章以 ripgrep 为实践案例给出各步骤的结果和实测数据。
+社区工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将 PGO 和 BOLT 的流程封装为 Cargo 子命令，自动处理 `--target`、profile 目录、工具路径和重定位参数；以 PGO 为例，只需执行 `cargo pgo build`、运行负载、执行 `cargo pgo optimize`（见第 6 章）。
 
 ## 2 PGO
 
