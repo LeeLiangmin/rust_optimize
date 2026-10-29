@@ -7,7 +7,7 @@
 | 技术 | 作用阶段 | 作用 |
 |:---|:---|:---|
 | PGO | 编译期 | 依据 profile 调整内联、分支布局等编译决策 |
-| FGO | 编译期 | 先由 profile 生成可审计的反馈信息文件，再据此优化编译；华为毕昇编译器有对应特性（见第 3 章） |
+| FGO | 编译期 | 先由 profile 生成可审计的反馈信息文件，再据此优化编译（华为自研特性） |
 | BOLT | 链接后 | 依据 profile 重排二进制中的机器码，使热代码集中 |
 
 PGO 与 BOLT 可以单独使用，也可以叠加使用，叠加时先 PGO、后 BOLT。
@@ -21,9 +21,9 @@ Rust 对 PGO 和 BOLT 的支持情况：
 | profile 采集 | 插桩 | 插桩或 `perf` 采样 |
 | 平台 | rustc 支持的主流平台（Linux、macOS、Windows） | Linux ELF（x86_64、AArch64）；macOS 仅有初步的 Mach-O 支持；Windows 不可用 |
 
-rustc 目前不支持 FGO，见第 3 章。
+rustc 目前不支持 FGO。FGO 是华为毕昇编译器的自研特性，rustc 内置的 LLVM 来自上游 LLVM，不含该特性，rustc 也没有提供对应的编译选项，详见 3.4 节。
 
-社区工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将 PGO 和 BOLT 的构建、采集和合并封装为 Cargo 子命令，见第 6 章。
+社区工具 [cargo-pgo](https://crates.io/crates/cargo-pgo) 将 PGO 和 BOLT 的构建、采集和合并封装为 Cargo 子命令，自动处理 `--target`、profile 目录、工具路径和重定位参数，简化构建流程：以 PGO 为例，只需执行 `cargo pgo build`，运行负载，再执行 `cargo pgo optimize`，无需手动设置 `RUSTFLAGS` 和调用 `llvm-profdata`，见第 6 章。
 
 第 2–4 章分别说明 PGO、FGO、BOLT，第 5 章说明 PGO 与 BOLT 叠加，第 6 章说明 cargo-pgo，第 7 章以 ripgrep 为实践案例给出各步骤的结果和实测数据。
 
