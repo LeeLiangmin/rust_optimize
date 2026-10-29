@@ -30,7 +30,7 @@ PGO 与 BOLT 可以叠加使用，顺序为先 PGO、后 BOLT。
 
 PGO 又称反馈优化（FDO），是一种编译期优化：先以插桩版程序运行典型负载，记录各分支、各函数的执行次数（profile），再依据 profile 重新编译，以实际执行情况代替静态启发式规则指导优化。
 
-PGO 适用于 CPU 密集、分支多、代码量大的程序，如编译器、解释器、数据库。主要耗时在 I/O 和系统调用上的程序收益有限。PGO 只覆盖本次构建编译的 crate，以及在其中实例化、内联的标准库泛型代码。本手册只介绍插桩式 PGO。ripgrep 上的实测效果见 7.5 节。
+PGO 适用于 CPU 密集、分支多、代码量大的程序，如编译器、解释器、数据库。主要耗时在 I/O 和系统调用上的程序收益有限。PGO 只覆盖本次构建编译的 crate，以及在其中实例化、内联的标准库泛型代码。本手册只介绍插桩式 PGO。ripgrep 上的实测效果见 7.2 节。
 
 ### 2.2 优化原理
 
@@ -224,7 +224,7 @@ FGO 是华为自研的反馈优化特性。FGO 沿用 PGO 的插桩和采集流�
 
 BOLT 是 LLVM 项目中的链接后优化器：读取已链接的可执行文件，依据运行时 profile 重排其中的机器码，使热代码集中，从而减少指令缓存（i-cache）和 iTLB 未命中。BOLT 基本不改变执行的指令，只改变指令的位置，因此可以叠加在 PGO、LTO 之上。
 
-BOLT 适用于代码量大、取指开销高的程序，如编译器、数据库、大型服务端程序。热点很少或主要耗时在 I/O 上的程序收益有限。BOLT 处理机器码，其版本无需与 rustc 内置的 LLVM 一致。ripgrep 上的实测效果见 7.5 节。
+BOLT 适用于代码量大、取指开销高的程序，如编译器、数据库、大型服务端程序。热点很少或主要耗时在 I/O 上的程序收益有限。BOLT 处理机器码，其版本无需与 rustc 内置的 LLVM 一致。ripgrep 上的实测效果见 7.2 节。
 
 ### 4.2 优化原理
 
@@ -463,92 +463,40 @@ BOLT 优化后的产物为 `target/<triple>/release/<app>-bolt-optimized`。`car
 
 ### 7.1 案例说明
 
-本章以 ripgrep 14.1.1（用 Rust 编写的命令行文本搜索工具）为实验对象，按第 2、4、5、6 章的步骤完成 PGO、BOLT、PGO + BOLT 和 cargo-pgo 的完整流程。源码位于 `examples/subjects/ripgrep/`，未做修改，来源和许可证见 [examples/subjects/README.md](examples/subjects/README.md)。语料为 Linux 6.6 内核源码（81,703 个文件，1.5 GB），首次运行时自动下载。测试环境为 Intel Core i7-9750H（支持 LBR）、WSL2 Ubuntu 24.04、rustc 1.93.1（LLVM 21.1.8）、BOLT 21.1.8。
+以 ripgrep 14.1.1（用 Rust 编写的命令行文本搜索工具，源码未修改）为实验对象，按第 2、4、5、6 章的步骤完成三个案例，并在同一次运行中评测全部版本：
 
-| 案例 | 脚本 | 结果文件 | 测试环境下的耗时 |
-|:---|:---|:---|---:|
-| PGO（7.2 节） | `examples/pgo/run.sh` | `examples/pgo/results.md` | 354 秒（含语料下载） |
-| BOLT 及 PGO + BOLT（7.3 节） | `examples/bolt/run.sh` | `examples/bolt/results.md` | 567 秒 |
-| cargo-pgo（7.4 节） | `examples/cargo-pgo/run.sh` | — | 349 秒 |
+| 案例 | 对应章节 | 生成的版本 |
+|:---|:---|:---|
+| pgo | 2.3 节 | `rg-pgo` |
+| bolt | 4.4 节、第 5 章 | `rg-bolt`（插桩 profile）、`rg-bolt-perf`（采样 profile）、`rg-pgo-bolt`（PGO + BOLT） |
+| cargo-pgo | 第 6 章 | `rg-cargo-pgo`、`rg-cargo-pgo-bolt` |
 
-BOLT 和 cargo-pgo 案例使用 PGO 案例的产物，需按以下顺序运行：
+在仓库根目录执行以下命令即可运行全部案例并评测，测试环境下约 20 分钟：
 
 ```bash
-bash examples/pgo/run.sh
-bash examples/bolt/run.sh
-bash examples/cargo-pgo/run.sh
+bash examples/run.sh
 ```
 
-所需工具见 2.3 节、4.4 节的步骤 0，评测另需 `perf`（需能读取硬件计数器）、`hyperfine`，下载语料需要 `curl`；cargo-pgo 案例另需 `cargo install cargo-pgo`。语料和构建产物写入 `examples/work/`，约需 4 GB，可通过环境变量 `WORK_DIR` 修改；在 WSL 中，仓库或 `WORK_DIR` 应位于 Linux 文件系统内，否则文件共享的 I/O 开销会影响测量结果。
+各案例的步骤、实际结果、环境要求和评测方法见 [examples/README.md](examples/README.md)，原始数据见 [examples/results.md](examples/results.md)。测试环境为 Intel Core i7-9750H（支持 LBR）、WSL2 Ubuntu 24.04、rustc 1.93.1（LLVM 21.1.8）、BOLT 21.1.8、cargo-pgo 0.3.0。
 
-### 7.2 PGO 优化方法
+### 7.2 优化效果
 
-`examples/pgo/run.sh` 按 2.3 节的步骤执行，产物位于 `examples/work/bin/`：
+评测使用 7 条与训练负载不重复的 ripgrep 搜索，指标为 `perf stat` 测得的用户态计数器，均为相对普通 release 构建的变化：
 
-| 步骤 | 结果 | 说明 |
-|:---|:---|:---|
-| 0. 准备环境 | `llvm-profdata` 的 LLVM 版本为 21.1.8 | 与 rustc 一致 |
-| 1. 插桩构建 | `rg-instr` 31.8 MB，普通版 `rg-base` 27.4 MB | 增加部分为计数器和写出 profile 的运行时代码 |
-| 2. 采集 | 9 条训练搜索生成 1 个 `.profraw`，1.9 MB | 默认文件名不含进程号，各次运行的计数累加在同一文件中 |
-| 3. 合并 | `Total count: 1457440383` | 非零，profile 有效 |
-| 4. 优化构建 | 缺少 profile 的函数告警 0 条；`rg-pgo` 24.9 MB | 0 条表示 profile 与源码匹配（用无关程序的 profile 编译时为 8341 条）；体积减小是因为 LLVM 对冷代码减少内联并按体积优化 |
-| 5. 验证 | 7 个用例中两个版本的输出一致 | 性能数据见 7.5 节 |
+| 版本 | cycles（6 个用例） | 指令数（6 个用例） | L1 i-cache 未命中（7 个用例） |
+|:---|---:|---:|---:|
+| PGO | −9.9% ~ −11.9% | −5.3% ~ −8.3% | −28.3% ~ −37.3% |
+| BOLT（插桩） | −4.8% ~ −11.2% | −0.4% ~ −2.7% | −49.5% ~ −53.2% |
+| BOLT（采样） | −8.3% ~ −10.3% | −0.4% ~ −2.8% | −47.5% ~ −53.6% |
+| PGO + BOLT | −11.2% ~ −14.9% | −5.4% ~ −8.3% | −49.9% ~ −54.0% |
+| cargo-pgo：PGO | −9.0% ~ −11.5% | −5.3% ~ −8.1% | −28.1% ~ −34.0% |
+| cargo-pgo：PGO + BOLT | −11.3% ~ −14.7% | −5.4% ~ −8.4% | −46.3% ~ −50.0% |
 
-### 7.3 BOLT 优化方法
+cycles 和指令数一列不含 no_literal 用例：该用例的耗时集中在正则引擎的一个小循环内，各版本的 cycles 变化不超过 3.3%。
 
-`examples/bolt/run.sh` 按 4.4 节和第 5 章的步骤执行：
-
-| 步骤 | 结果 | 说明 |
-|:---|:---|:---|
-| 1. 带重定位构建 | `rg-reloc` 52.2 MB，包含 `.rela.text` | 增加部分为重定位信息，不改变代码，性能对比仍以 `rg-base` 为基线 |
-| 2a. 插桩采集 | 9 次运行生成 9 个 `.fdata`，合并为 1 个 | 插桩版 `rg.inst` 26.2 MB |
-| 2b. 采样采集 | `perf record` 采集 86,719 个样本；`perf2bolt` 读取 2,759,779 条 LBR 记录 | 采样对 `rg-reloc` 本身进行，不需要插桩版 |
-| 3. 优化 | 插桩 profile 覆盖 16.7% 的函数，taken branches −36.0%；采样 profile 覆盖 7.8% 的函数，taken branches −41.6% | 采样只能捕获执行足够频繁的代码，覆盖率约为插桩方式的一半；产物 12.3–12.4 MB，原因是 BOLT 默认丢弃调试信息 |
-| 与 PGO 叠加 | 覆盖 15.0% 的函数，taken branches −7.6% | 降幅小于单独使用 BOLT，因为 PGO 已依据 profile 调整过基本块布局 |
-| 4. 验证 | 7 个用例中五个版本的输出一致 | 性能数据见 7.5 节 |
-
-`taken branches` 为 BOLT 在 profile 上统计的跳转次数，各行基于各自的 profile，不能相互比较。
-
-### 7.4 cargo-pgo 优化方法
-
-`examples/cargo-pgo/run.sh` 按第 6 章的命令执行，使用 cargo-pgo 0.3.0：
-
-| 步骤 | 结果 |
-|:---|:---|
-| `cargo pgo info` | 找到 `llvm-profdata`、`llvm-bolt`、`merge-fdata` |
-| `cargo pgo build`、采集、`cargo pgo optimize` | 合并 1 个 1.80 MiB 的 profile；`rg-cargo-pgo` 25.4 MB |
-| `cargo pgo bolt build --with-pgo`、采集、`cargo pgo bolt optimize --with-pgo` | `rg-cargo-pgo-bolt` 28.9 MB |
-| 验证 | `rg-base`、`rg-cargo-pgo`、`rg-cargo-pgo-bolt` 在 `rg -w PM_RESUME` 上的输出 sha256 一致（`69ac725be6017a0d`） |
-
-本案例只验证 cargo-pgo 的流程和产物的正确性，未进行性能评测。
-
-### 7.5 优化效果
-
-评测用例为 7 条与训练负载不重复的 ripgrep 搜索，指标为 `perf stat` 测得的用户态计数器，用例的命令和评测方法见 [examples/README.md](examples/README.md#负载与评测方法)。以下数据来自 BOLT 案例的同一次运行，包含 PGO、BOLT（插桩）、BOLT（采样）、PGO + BOLT 四个版本，均相对 `rg-base`。完整数据见 [`examples/bolt/results.md`](examples/bolt/results.md)，PGO 案例单独运行的数据见 [`examples/pgo/results.md`](examples/pgo/results.md)。
-
-用户态 cycles 的变化：
-
-| 用例 | PGO | BOLT（插桩） | BOLT（采样） | PGO + BOLT |
-|:---|---:|---:|---:|---:|
-| literal | −11.4% | −10.5% | −10.8% | −15.4% |
-| literal_casei | −11.8% | −4.8% | −7.6% | −13.5% |
-| word | −15.2% | −11.6% | −11.4% | −16.8% |
-| unicode_word | −11.5% | −10.6% | −8.9% | −13.0% |
-| re_literal_suffix | −12.4% | −12.9% | −10.6% | −14.7% |
-| alternates | −10.0% | −4.0% | −7.7% | −12.1% |
-| no_literal | −1.5% | −1.9% | −0.9% | −1.7% |
-
-其他计数器在 7 个用例中的变化范围：
-
-| 指标 | PGO | BOLT（插桩） | BOLT（采样） | PGO + BOLT |
-|:---|---:|---:|---:|---:|
-| 指令数 | +11.1% ~ −7.4% | 0.0% ~ −3.5% | +2.9% ~ −3.4% | +11.1% ~ −7.5% |
-| L1 i-cache miss | −30.3% ~ −34.0% | −44.3% ~ −48.1% | −43.7% ~ −47.3% | −44.4% ~ −48.8% |
-| iTLB miss | −22.7% ~ −38.5% | +4.5% ~ −53.4% | +24.9% ~ −39.1% | −40.4% ~ −54.7% |
-
-PGO 主要减少执行的指令数，L1 i-cache 未命中减少约三分之一。BOLT 的指令数基本不变（变化不超过 3.5%），L1 i-cache 未命中减少 44%–48%，与其只改变代码布局的原理一致；采样方式的 i-cache 未命中降幅与插桩方式接近。PGO + BOLT 在 7 个用例中的 6 个 cycles 降幅最大。no_literal 的耗时集中在正则引擎的一个小循环内，各版本的 cycles 变化均不超过 2%；PGO 版和 PGO + BOLT 版在该用例中的指令数增加 11.1%，原因本手册未分析。
-
-墙钟时间的变化方向不一致，幅度与测量的标准差处于同一量级，不能据此判断端到端性能：该负载的 CPU 时间大部分为内核态（literal 用例中约 58%），而 PGO 和 BOLT 只作用于用户态代码。
+- PGO 主要减少执行的指令数；BOLT 几乎不改变指令数，L1 i-cache 未命中减少约一半，与两者的原理一致。
+- PGO + BOLT 的 cycles 降幅在 7 个用例中均不小于单独使用 PGO 或 BOLT；cargo-pgo 得到的版本与手动流程效果接近。
+- 墙钟时间的变化与测量的标准差处于同一量级，不能据此判断端到端性能：该负载的 CPU 时间约一半为内核态，而 PGO 和 BOLT 只作用于用户态代码。
 
 ## 参考
 

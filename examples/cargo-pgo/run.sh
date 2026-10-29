@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # cargo-pgo 案例：用 cargo-pgo 完成 PGO，以及 PGO + BOLT。
 # 步骤 1–3 对应 ../pgo/run.sh 的 PGO 流程，步骤 4–6 对应 ../bolt/run.sh 的"与 PGO 叠加"。
-# 说明见同目录的 README.md。以 pgo 案例的 rg-base 做输出对照，通过 examples/run.sh cargo-pgo
+# 说明见 examples/README.md。以 pgo 案例的 rg-base 做输出对照，通过 examples/run.sh cargo-pgo
 # 运行时会先补齐该产物；步骤 4–6 需要 llvm-bolt 在 PATH 中。
 set -euo pipefail
 EX=$(cd "$(dirname "$0")/.." && pwd)          # examples/

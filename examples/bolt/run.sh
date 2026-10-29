@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # BOLT 案例：对 ripgrep 应用 BOLT（插桩、采样两种方式），并与 PGO 叠加。
-# 步骤编号与 GUIDE.md 4.4 节一致，与 PGO 叠加对应 GUIDE.md 第 5 章，说明见同目录的 README.md。
+# 步骤编号与 GUIDE.md 4.4 节一致，与 PGO 叠加对应 GUIDE.md 第 5 章，说明见 examples/README.md。
 # 与 PGO 叠加使用 pgo 案例的 PGO profile；通过 examples/run.sh bolt 运行时会先补齐该产物。
 set -euo pipefail
 EX=$(cd "$(dirname "$0")/.." && pwd)          # examples/

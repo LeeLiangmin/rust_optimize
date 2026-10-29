@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PGO 案例：对 ripgrep 应用 PGO。步骤编号与 GUIDE.md 2.3 节一致，说明见同目录的 README.md。
+# PGO 案例：对 ripgrep 应用 PGO。步骤编号与 GUIDE.md 2.3 节一致，说明见 examples/README.md。
 # 通常通过 examples/run.sh 运行；性能评测由 examples/run.sh evaluate 统一完成。
 set -euo pipefail
 EX=$(cd "$(dirname "$0")/.." && pwd)          # examples/

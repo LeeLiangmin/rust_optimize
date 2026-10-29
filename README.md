@@ -12,17 +12,17 @@
 | [4 BOLT](GUIDE.md#4-bolt) | 简介、优化原理、输入二进制的要求、使用方法、注意事项 |
 | [5 PGO 与 BOLT 叠加](GUIDE.md#5-pgo-与-bolt-叠加) | 叠加的顺序和步骤 |
 | [6 使用 cargo-pgo](GUIDE.md#6-使用-cargo-pgo) | 用 cargo-pgo 完成 PGO、BOLT 和两者叠加 |
-| [7 实践案例：ripgrep](GUIDE.md#7-实践案例ripgrep) | 案例说明、各案例的步骤结果、优化效果 |
+| [7 实践案例：ripgrep](GUIDE.md#7-实践案例ripgrep) | 案例说明、优化效果 |
 
 ## 实践案例
 
-案例以 ripgrep 为实验对象，脚本位于 [`examples/`](examples/README.md)，按手册的步骤执行，环境要求见 [7.1 节](GUIDE.md#71-案例说明)。按以下顺序运行：
+案例以 ripgrep 为实验对象，按手册的步骤完成 PGO、BOLT 和 cargo-pgo 三个案例并统一评测。在仓库根目录执行：
 
 ```bash
-bash examples/pgo/run.sh         # 约 6 分钟，含首次下载语料
-bash examples/bolt/run.sh        # 约 9.5 分钟
-bash examples/cargo-pgo/run.sh   # 约 6 分钟
+bash examples/run.sh
 ```
+
+各案例的步骤、结果和单独运行的方法见 [examples/README.md](examples/README.md)。
 
 ## 目录结构
 
@@ -31,9 +31,10 @@ bash examples/cargo-pgo/run.sh   # 约 6 分钟
 ├── GUIDE.md               手册
 ├── assets/                手册中的流程图
 └── examples/
-    ├── pgo/               PGO 案例：run.sh、results.md
-    ├── bolt/              BOLT 案例：run.sh、results.md
-    ├── cargo-pgo/         cargo-pgo 案例：run.sh
+    ├── README.md          案例说明：一键运行、各案例的步骤与结果、评测方法
+    ├── run.sh             统一入口
+    ├── results.md         评测结果
+    ├── pgo/ bolt/ cargo-pgo/  各案例的脚本 run.sh
     ├── common/            共用脚本：workload.sh（语料与训练负载）、bench.sh（评测）
     ├── subjects/ripgrep/  实验对象源码
     └── work/              运行时生成，不提交
